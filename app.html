@@ -1,0 +1,2001 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>머물다</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=Pretendard:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#FAF8F5; --panel:#FFFFFF; --panel2:#F3EFEA; --line:#E6E0D7;
+    --text:#3D352E; --sub:#8A7F6B; --accent:#4A6B5D; --accent-soft:#E1EBE6; --danger:#E08A68;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    background-size:cover;background-position:center;background-attachment:fixed;transition:background-color .3s,color .3s;}
+  h1,h2,h3,.serif{font-family:"Noto Serif KR",serif}
+  .swatch{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);cursor:pointer;display:inline-block}
+  .swatch.selected{outline:2px solid var(--accent);outline-offset:2px}
+  .settingsub{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+  .settingsub button{background:none;border:1px solid var(--line);color:var(--sub);padding:7px 14px;border-radius:999px;cursor:pointer;font-size:13px;transition:all .15s}
+  .settingsub button.active{color:var(--accent);border-color:var(--accent);background:var(--accent-soft);font-weight:600}
+  header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 24px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.7);backdrop-filter:blur(8px);position:sticky;top:0;z-index:10}
+  header h1{font-size:21px;margin:0;font-weight:700;letter-spacing:0;color:var(--accent);white-space:nowrap;flex-shrink:0}
+  nav{display:flex;gap:4px;flex-wrap:wrap;flex:1;justify-content:flex-end}
+  nav button{background:none;border:1px solid transparent;color:var(--sub);padding:9px 14px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:500;transition:all .15s;white-space:nowrap}
+  nav button.active{color:var(--accent);border-color:var(--accent-soft);background:var(--accent-soft);font-weight:600}
+  #settingsGear{background:none;border:1px solid var(--line);color:var(--text);width:38px;height:38px;border-radius:10px;cursor:pointer;font-size:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+  #settingsGear:hover{background:var(--panel2)}
+  #settingsGear.active{border-color:var(--accent);background:var(--accent-soft)}
+  @media (max-width: 600px){ .navlabel{display:none} nav button{padding:9px 11px} }
+  .modalOverlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modalOverlay.open{display:flex}
+  .modalPanel{background:var(--panel);border-radius:18px;padding:22px;max-width:420px;width:100%;max-height:80vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+  .modalHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  main{max-width:640px;margin:0 auto;padding:24px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px;margin-bottom:16px;box-shadow:0 2px 14px rgba(61,53,46,.05)}
+  input,textarea,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:11px 14px;font-size:14px;font-family:inherit;transition:border-color .15s}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);background:var(--panel)}
+  textarea{min-height:120px;resize:vertical;line-height:1.6}
+  label{font-size:13px;color:var(--sub);display:block;margin:12px 0 6px;font-weight:500}
+  button.btn{background:var(--accent);color:#fff;border:none;border-radius:12px;padding:11px 18px;font-weight:600;cursor:pointer;font-size:14px;transition:all .15s;box-shadow:0 2px 8px rgba(74,107,93,.25)}
+  button.btn:hover{background:#3A5548}
+  button.btn.ghost{background:none;border:1px solid var(--line);color:var(--text);box-shadow:none}
+  button.btn.ghost:hover{background:var(--panel2)}
+  button.btn.small{padding:7px 12px;font-size:13px;border-radius:9px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
+  .muted{color:var(--sub);font-size:13px}
+  .record{border-bottom:1px solid var(--line);padding:14px 0}
+  .record:last-child{border-bottom:none}
+  .tag{display:inline-block;font-size:11px;color:var(--sub);border:1px solid var(--line);border-radius:999px;padding:3px 10px;margin-right:6px;background:var(--panel2)}
+  .tag.saved{color:#4A6B5D;border-color:#C7DACF;background:#EEF4F0}
+  .tag.draft{color:#B9793F;border-color:#EAD3B0;background:#FBF1E3}
+  .tagtoggle{display:inline-block;font-size:11px;border-radius:999px;padding:4px 12px;margin-right:6px;margin-top:6px;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--sub)}
+  .tagtoggle.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .empty{color:var(--sub);text-align:center;padding:40px 0;font-size:14px}
+  a{color:var(--accent)}
+  .iconbtn{background:none;border:none;cursor:pointer;font-size:15px;padding:5px 8px;border-radius:8px;transition:background .15s}
+  .iconbtn:hover{background:var(--panel2)}
+  .actionlink{color:var(--sub);font-size:12px;cursor:pointer;background:none;border:none;padding:2px 4px}
+  .actionlink:hover{color:var(--accent);text-decoration:underline}
+  .actionlink.danger:hover{color:var(--danger)}
+  .cardhead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:11px 20px;border-radius:12px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+  .dropzone{border:2px dashed var(--line);border-radius:14px;padding:18px;text-align:center;cursor:pointer;transition:all .15s;background:var(--panel2)}
+  .dropzone:hover{background:var(--accent-soft);border-color:var(--accent)}
+  .dropzone input{display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <h1 class="serif">머물다</h1>
+  <nav id="nav" style="display:none">
+    <button data-view="moment"><span class="navicon">🌿</span><span class="navlabel"> 오늘의 멈춤</span></button>
+    <button data-view="write"><span class="navicon">✍️</span><span class="navlabel"> 기록하기</span></button>
+    <button data-view="records"><span class="navicon">📖</span><span class="navlabel"> 기록보기</span></button>
+  </nav>
+  <button id="settingsGear" style="display:none" title="설정">⚙️</button>
+</header>
+
+<main id="app"></main>
+
+<script>
+// ====== 설정: 발급받은 값으로 교체 ======
+const SUPABASE_URL = "https://rmcrugtzsiflgsmflcab.supabase.co";
+const SUPABASE_KEY = "sb_publishable_LMpQN4WwRfRvlNwgVQbd5w_GItY66bj";
+// =======================================
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let state = { user: null, view: "moment", relationships: [], records: [], profile: null, folders: [], quotes: [] };
+let settingsTab = "profile"; // profile | system | info
+const DEFAULT_FOLDERS = ["나의 삶", "우리의 이야기", "기억 / 유산"];
+
+const THEMES = {
+  warm: { label: "따뜻한 종이", bg:"#FAF8F5", panel:"#FFFFFF", panel2:"#F3EFEA", line:"#E6E0D7", text:"#3D352E", sub:"#8A7F6B", accent:"#4A6B5D", accentSoft:"#E1EBE6", danger:"#E08A68" },
+  soft: { label: "부드러운 그레이", bg:"#EDEBE6", panel:"#F8F7F4", panel2:"#E9E5DD", line:"#D9D5CC", text:"#33312C", sub:"#84806F", accent:"#5B7A8C", accentSoft:"#DCE6EB", danger:"#B85C4A" },
+  dark: { label: "차분한 다크", bg:"#2A2420", panel:"#352E28", panel2:"#3D352D", line:"#463D34", text:"#EFE7DA", sub:"#B3A594", accent:"#7FA08E", accentSoft:"#3D4A44", danger:"#D97B63" },
+};
+const FONT_SIZES = { sm: "14px", md: "16px", lg: "18px" };
+
+function applyTheme(themeKey, textColorOverride){
+  const t = THEMES[themeKey] || THEMES.warm;
+  const root = document.documentElement.style;
+  root.setProperty("--bg", t.bg);
+  root.setProperty("--panel", t.panel);
+  root.setProperty("--panel2", t.panel2);
+  root.setProperty("--line", t.line);
+  root.setProperty("--text", textColorOverride || t.text);
+  root.setProperty("--sub", t.sub);
+  root.setProperty("--accent", t.accent);
+  root.setProperty("--accent-soft", t.accentSoft);
+  root.setProperty("--danger", t.danger);
+}
+
+function applyFontSize(sizeKey){
+  document.documentElement.style.fontSize = FONT_SIZES[sizeKey] || FONT_SIZES.md;
+}
+
+function applyBackground(url){
+  if (url){
+    document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,.18), rgba(0,0,0,.18)), url('${url}')`;
+  } else {
+    document.body.style.backgroundImage = "none";
+  }
+}
+
+async function applyProfileSettings(profile){
+  if (!profile) return;
+  applyTheme(profile.theme, profile.text_color);
+  applyFontSize(profile.font_size);
+  applyNavIcons(profile.nav_icons);
+  if (profile.background_image_path){
+    const { data } = await sb.storage.from("media").createSignedUrl(profile.background_image_path, 3600);
+    applyBackground(data?.signedUrl || null);
+  } else if (profile.background_image_url){
+    applyBackground(profile.background_image_url);
+  } else {
+    applyBackground(null);
+  }
+}
+
+function applyNavIcons(icons){
+  const ic = icons || {};
+  const map = { moment: ic.moment || "🌿", write: ic.write || "✍️", records: ic.records || "📖" };
+  document.querySelectorAll("nav button[data-view]").forEach(btn=>{
+    const iconEl = btn.querySelector(".navicon");
+    if (iconEl) iconEl.textContent = map[btn.dataset.view];
+  });
+}
+
+async function loadProfile(){
+  const { data, error } = await sb.from("profiles").select("*").eq("id", state.user.id).single();
+  if (error){ toast("설정 불러오기 실패: " + error.message); return; }
+  state.profile = data;
+  await applyProfileSettings(data);
+}
+
+// ---------- 폴더 (기본 시딩 + 로딩) ----------
+async function ensureDefaultFolders(){
+  const { data } = await sb.from("folders").select("name").eq("owner_id", state.user.id).eq("is_default", true);
+  const existing = new Set((data||[]).map(f=>f.name));
+  const missing = DEFAULT_FOLDERS.filter(n=>!existing.has(n));
+  if (missing.length){
+    await sb.from("folders").insert(missing.map((name,i)=>({owner_id: state.user.id, name, is_default: true, sort_order: i})));
+  }
+}
+
+async function loadFolders(){
+  const { data, error } = await sb.from("folders").select("*").eq("owner_id", state.user.id).order("sort_order").order("created_at");
+  if (error){ toast("폴더 불러오기 실패: " + error.message); return; }
+  state.folders = data || [];
+}
+
+function toast(msg){
+  const t = document.createElement("div");
+  t.className = "toast"; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2200);
+}
+
+// ---------- 인증 ----------
+async function ensureProfile(user){
+  await sb.from("profiles").upsert({
+    id: user.id,
+    is_anonymous: user.is_anonymous ?? (user.app_metadata?.provider === "anonymous"),
+  }, { onConflict: "id" });
+}
+
+async function boot(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user){
+    state.user = session.user;
+    await ensureProfile(state.user);
+    await loadProfile();
+    await ensureDefaultFolders();
+    document.getElementById("nav").style.display = "flex";
+    document.getElementById("settingsGear").style.display = "flex";
+    render();
+  } else {
+    renderAuth();
+  }
+}
+
+sb.auth.onAuthStateChange((_event, session) => {
+  if (session?.user && !state.user){
+    state.user = session.user;
+    ensureProfile(state.user).then(loadProfile).then(ensureDefaultFolders).then(()=>{
+      document.getElementById("nav").style.display = "flex";
+      document.getElementById("settingsGear").style.display = "flex";
+      render();
+    });
+  }
+});
+
+async function signInGuest(){
+  const { error } = await sb.auth.signInAnonymously();
+  if (error) return toast("게스트 로그인 실패: " + error.message);
+}
+
+async function signUpEmail(email, pw){
+  const { error } = await sb.auth.signUp({ email, password: pw });
+  if (error) return toast("가입 실패: " + error.message);
+  toast("가입 확인 이메일을 보냈습니다. 확인 후 로그인해주세요.");
+}
+
+async function signInEmail(email, pw){
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if (error) return toast("로그인 실패: " + error.message);
+}
+
+async function signOut(){
+  const isGuest = state.user?.is_anonymous ?? (state.user?.app_metadata?.provider === "anonymous");
+  if (isGuest){
+    const ok = confirm(
+      "게스트 계정입니다. 지금 로그아웃하면 지금까지 쓴 기록으로 다시 돌아올 방법이 없습니다.\n" +
+      "계속 쓰시려면 '설정 > 개인 프로필'에서 이메일로 먼저 전환해주세요.\n\n" +
+      "그래도 로그아웃하시겠습니까?"
+    );
+    if (!ok) return;
+  }
+  await sb.auth.signOut();
+  state.user = null;
+  document.getElementById("nav").style.display = "none";
+  document.getElementById("settingsGear").style.display = "none";
+  renderAuth();
+}
+
+function renderAuth(){
+  document.getElementById("app").innerHTML = `
+    <div class="panel">
+      <p class="muted">로그인 없이 게스트로 바로 시작할 수 있습니다. 기록을 다른 사람과 공유하려면 이메일 계정이 필요합니다.</p>
+      <button class="btn" id="guestBtn">게스트로 시작하기</button>
+      <hr style="border-color:var(--line);margin:20px 0">
+      <label>이메일</label>
+      <input id="authEmail" type="email" placeholder="you@example.com">
+      <label>비밀번호</label>
+      <input id="authPw" type="password" placeholder="********">
+      <label style="display:flex;align-items:flex-start;gap:8px;margin-top:14px;cursor:pointer">
+        <input type="checkbox" id="minorConsent" style="width:auto;margin-top:3px">
+        <span class="muted">본인은 만 14세 이상이거나, 만 14세 미만인 경우 법정대리인(보호자)의 동의를 받았습니다. (이메일로 회원가입 시 필수)</span>
+      </label>
+      <div class="row">
+        <button class="btn ghost" id="loginBtn">로그인</button>
+        <button class="btn ghost" id="signupBtn">회원가입</button>
+      </div>
+    </div>
+  `;
+  document.getElementById("guestBtn").onclick = signInGuest;
+  document.getElementById("loginBtn").onclick = () => signInEmail(authEmail.value, authPw.value);
+  document.getElementById("signupBtn").onclick = () => {
+    if (!document.getElementById("minorConsent").checked){
+      return toast("만 14세 이상 확인(또는 보호자 동의) 체크가 필요합니다.");
+    }
+    signUpEmail(authEmail.value, authPw.value);
+  };
+}
+
+// ---------- 네비게이션 ----------
+document.getElementById("nav").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-view]");
+  if (!btn) return;
+  state.view = btn.dataset.view;
+  render();
+});
+document.getElementById("settingsGear").addEventListener("click", () => {
+  state.view = "settings";
+  render();
+});
+
+function markActiveNav(){
+  document.querySelectorAll("nav button").forEach(b=>{
+    b.classList.toggle("active", b.dataset.view === state.view);
+  });
+  document.getElementById("settingsGear").classList.toggle("active", state.view === "settings");
+}
+
+async function render(){
+  markActiveNav();
+  const app = document.getElementById("app");
+  if (state.view === "moment") return renderMoment();
+  if (state.view === "write") return renderWrite();
+  if (state.view === "records") return renderRecords();
+  if (state.view === "settings") return renderSettings();
+}
+
+// ---------- 오늘의 멈춤 (나의 명언) — 자동저장 ----------
+let momentDraftId = null;
+let momentTimer = null;
+
+function renderMoment(){
+  momentDraftId = null;
+  document.getElementById("app").innerHTML = `
+    <div class="panel">
+      <p class="muted">지금 떠오르는 짧은 생각을 적어보세요. 이 기록은 완전히 비공개이며, 소중한 존재를 연결하거나 공유할 수 없습니다.</p>
+      <textarea id="momentBody" placeholder="짧아도 괜찮습니다. 한 문장도 삶의 기록입니다."></textarea>
+      <div class="muted" id="momentStatus" style="margin-top:6px"></div>
+      <div class="row">
+        <button class="btn ghost" id="momentNew">새 글쓰기</button>
+        <button class="btn" id="momentSave">기록하기</button>
+      </div>
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line)">
+        <button class="btn ghost small" id="showQuote">오늘의 명언 보기</button>
+        <div id="quoteBox" style="display:none;margin-top:12px">
+          <div id="quoteText" style="font-style:italic"></div>
+          <div id="quoteAuthor" class="muted" style="margin-top:4px"></div>
+          <button class="btn ghost small" id="anotherQuote" style="margin-top:10px">다른 명언</button>
+        </div>
+      </div>
+    </div>
+  `;
+  const ta = document.getElementById("momentBody");
+  ta.addEventListener("input", () => scheduleAutosave(momentTimer, autosaveMoment, (t)=>momentTimer=t));
+  document.getElementById("momentNew").onclick = () => confirmNewEntry(
+    () => document.getElementById("momentBody").value.trim(),
+    async () => { await autosaveMoment(); renderMoment(); },
+    () => renderMoment()
+  );
+  document.getElementById("momentSave").onclick = () => finalizeMoment();
+  document.getElementById("showQuote").onclick = async () => {
+    if (!state.quotes.length) await loadQuotes();
+    document.getElementById("quoteBox").style.display = "block";
+    showRandomQuote();
+  };
+  document.getElementById("anotherQuote").onclick = showRandomQuote;
+}
+
+function showRandomQuote(){
+  if (!state.quotes.length){
+    document.getElementById("quoteText").textContent = "아직 업로드된 명언이 없습니다.";
+    document.getElementById("quoteAuthor").textContent = "설정 > 명언 관리에서 업로드해보세요.";
+    return;
+  }
+  const q = state.quotes[Math.floor(Math.random() * state.quotes.length)];
+  document.getElementById("quoteText").textContent = "“" + q.text + "”";
+  document.getElementById("quoteAuthor").textContent = "— " + (q.author || "작자 미상");
+}
+
+function confirmNewEntry(getBody, onSaveThenNew, onDiscardNew){
+  const body = getBody();
+  if (!body){ onDiscardNew(); return; }
+  if (confirm("지금 쓰던 내용을 저장할까요?\n확인: 저장 후 새 글쓰기 / 취소: 저장하지 않고 새 글쓰기")){
+    onSaveThenNew();
+  } else {
+    onDiscardNew();
+  }
+}
+
+function scheduleAutosave(timerVar, fn, setTimerVar){
+  clearTimeout(timerVar);
+  const sec = (state.profile?.autosave_interval_sec) || 5;
+  setTimerVar(setTimeout(fn, sec * 1000));
+}
+
+function setStatusText(elId, text){
+  const el = document.getElementById(elId);
+  if (el) el.textContent = text;
+}
+
+async function autosaveMoment(){
+  const body = document.getElementById("momentBody")?.value.trim();
+  if (!body) return;
+  if (momentDraftId){
+    const { error } = await sb.from("records").update({ body, updated_at: new Date().toISOString() }).eq("id", momentDraftId);
+    if (error) return;
+  } else {
+    const { data, error } = await sb.from("records").insert({ owner_id: state.user.id, kind: "moment", body, status: "draft" }).select().single();
+    if (error) return;
+    momentDraftId = data.id;
+  }
+  setStatusText("momentStatus", "자동저장됨 · " + new Date().toLocaleTimeString("ko-KR", { hour:"2-digit", minute:"2-digit" }));
+}
+
+async function finalizeMoment(){
+  const body = document.getElementById("momentBody").value.trim();
+  if (!body) return toast("내용을 입력해주세요.");
+  clearTimeout(momentTimer);
+  if (momentDraftId){
+    const { error } = await sb.from("records").update({ body, status: "saved", updated_at: new Date().toISOString() }).eq("id", momentDraftId);
+    if (error) return toast("저장 실패: " + error.message);
+  } else {
+    const { data, error } = await sb.from("records").insert({ owner_id: state.user.id, kind: "moment", body, status: "saved" }).select().single();
+    if (error) return toast("저장 실패: " + error.message);
+    momentDraftId = data.id;
+  }
+  toast("기록했습니다.");
+  setStatusText("momentStatus", "저장 완료 · 계속 이어쓰거나 '새 글쓰기'를 눌러 새로 시작하세요.");
+}
+
+// ---------- 기록하기 (나의 기록) — 자동저장 ----------
+let writeDraftId = null;
+let writeTimer = null;
+
+async function renderWrite(){
+  writeDraftId = null;
+  if (!state.relationships.length) await loadRelationships();
+  document.getElementById("app").innerHTML = `
+    <div class="panel">
+      <label>제목 (선택)</label>
+      <input id="wTitle" placeholder="제목은 비워도 됩니다">
+      <label>내용</label>
+      <textarea id="wBody" placeholder="일기처럼 쓰거나, 손편지를 촬영해 첨부할 수 있습니다."></textarea>
+      <div class="muted" id="writeStatus" style="margin-top:6px"></div>
+      <div class="row">
+        <button class="btn ghost" id="wNew">새 글쓰기</button>
+        <button class="btn" id="wSave">기록하기</button>
+        <button class="iconbtn" id="wMoreBtn" title="더보기" style="margin-left:auto">⋮</button>
+      </div>
+    </div>
+    <div class="modalOverlay" id="wModal">
+      <div class="modalPanel">
+        <div class="modalHead">
+          <strong>더보기</strong>
+          <button class="iconbtn" id="wModalClose">✕</button>
+        </div>
+        <label>소중한 존재 (선택)</label>
+        <select id="wPerson">
+          <option value="">연결하지 않음</option>
+          ${state.relationships.map(r=>`<option value="${r.id}">${r.person_name}${r.relation_type ? " · "+r.relation_type : ""}</option>`).join("")}
+        </select>
+        <label>첨부파일 (이미지/사진/압축파일 중 1개, 선택)</label>
+        <label class="dropzone" for="wFile" id="wFileLabel">
+          <div style="font-size:22px;margin-bottom:4px">📎</div>
+          <div style="font-size:13px;font-weight:500">사진 또는 파일 첨부하기</div>
+          <div class="muted" style="font-size:11px;margin-top:2px" id="wFileName">클릭하여 1개 선택 (여러 장이면 미리 하나로 합치거나 압축)</div>
+          <input id="wFile" type="file" accept="image/*,.zip">
+        </label>
+        <button class="btn small" id="wModalDone" style="margin-top:14px">완료</button>
+      </div>
+    </div>
+  `;
+  const onInput = () => scheduleAutosave(writeTimer, autosaveWrite, (t)=>writeTimer=t);
+  document.getElementById("wTitle").addEventListener("input", onInput);
+  document.getElementById("wBody").addEventListener("input", onInput);
+  document.getElementById("wMoreBtn").onclick = () => document.getElementById("wModal").classList.add("open");
+  document.getElementById("wModalClose").onclick = () => document.getElementById("wModal").classList.remove("open");
+  document.getElementById("wModalDone").onclick = () => document.getElementById("wModal").classList.remove("open");
+  document.getElementById("wNew").onclick = () => confirmNewEntry(
+    () => document.getElementById("wBody").value.trim(),
+    async () => { await autosaveWrite(); renderWrite(); },
+    () => renderWrite()
+  );
+  document.getElementById("wFile").addEventListener("change", (e) => {
+    const f = e.target.files[0];
+    document.getElementById("wFileName").textContent = f ? f.name : "클릭하여 1개 선택 (여러 장이면 미리 하나로 합치거나 압축)";
+  });
+  document.getElementById("wSave").onclick = () => finalizeWrite();
+}
+
+async function autosaveWrite(){
+  const title = document.getElementById("wTitle")?.value.trim() || null;
+  const body = document.getElementById("wBody")?.value.trim();
+  if (!body) return;
+  if (writeDraftId){
+    const { error } = await sb.from("records").update({ title, body, updated_at: new Date().toISOString() }).eq("id", writeDraftId);
+    if (error) return;
+  } else {
+    const { data, error } = await sb.from("records").insert({ owner_id: state.user.id, kind: "record", title, body, status: "draft" }).select().single();
+    if (error) return;
+    writeDraftId = data.id;
+  }
+  setStatusText("writeStatus", "자동저장됨 · " + new Date().toLocaleTimeString("ko-KR", { hour:"2-digit", minute:"2-digit" }));
+}
+
+async function finalizeWrite(){
+  const title = document.getElementById("wTitle").value.trim() || null;
+  const body = document.getElementById("wBody").value.trim();
+  const personId = document.getElementById("wPerson").value || null;
+  const file = document.getElementById("wFile").files[0];
+  if (!body) return toast("내용을 입력해주세요.");
+  clearTimeout(writeTimer);
+
+  let recId = writeDraftId;
+  if (recId){
+    const { error } = await sb.from("records").update({ title, body, status: "saved", updated_at: new Date().toISOString() }).eq("id", recId);
+    if (error) return toast("저장 실패: " + error.message);
+  } else {
+    const { data, error } = await sb.from("records").insert({ owner_id: state.user.id, kind: "record", title, body, status: "saved" }).select().single();
+    if (error) return toast("저장 실패: " + error.message);
+    recId = data.id;
+    writeDraftId = recId;
+  }
+
+  await sb.from("record_relationships").delete().eq("record_id", recId);
+  if (personId){
+    await sb.from("record_relationships").insert({ record_id: recId, relationship_id: personId });
+  }
+
+  if (file){
+    const path = `${state.user.id}/${recId}/${file.name}`;
+    const { error: upErr } = await sb.storage.from("media").upload(path, file, { upsert: true });
+    if (upErr){
+      toast("파일 업로드 실패: " + upErr.message);
+    } else {
+      await sb.from("media").insert({ record_id: recId, media_type: file.type || "file", storage_path: path });
+    }
+  }
+
+  toast("저장했습니다.");
+  setStatusText("writeStatus", "저장 완료 · 계속 이어쓰거나 '새 글쓰기'를 눌러 새로 시작하세요.");
+}
+
+// ---------- 기록보기 ----------
+let recordsFilter = "all"; // all | draft | saved
+let folderFilter = null; // folder id | null
+let personFilterView = null; // relationship id | null
+let openRecordId = null;
+let continueUnlocked = false;
+let currentPage = 1;
+
+function buildPageNumbers(current, total){
+  if (total <= 7) return Array.from({length: total}, (_, i) => i + 1);
+  const nums = new Set([1, total, current, current - 1, current + 1]);
+  const sorted = [...nums].filter(n => n >= 1 && n <= total).sort((a,b)=>a-b);
+  const out = [];
+  let prev = null;
+  for (const n of sorted){
+    if (prev !== null && n - prev > 1) out.push("…");
+    out.push(n);
+    prev = n;
+  }
+  return out;
+}
+
+function renderPager(current, total){
+  const pager = document.getElementById("pager");
+  if (!pager) return;
+  const nums = buildPageNumbers(current, total);
+  pager.innerHTML = `
+    <button class="btn ghost small" data-page="${current-1}" ${current<=1?'disabled':''}>이전</button>
+    ${nums.map(n => n === "…"
+      ? `<span class="muted" style="padding:0 4px">…</span>`
+      : `<button class="btn ${n===current?'':'ghost'} small" data-page="${n}">${n}</button>`
+    ).join("")}
+    <button class="btn ghost small" data-page="${current+1}" ${current>=total?'disabled':''}>다음</button>
+  `;
+  pager.querySelectorAll("[data-page]").forEach(btn=>{
+    btn.onclick = () => { currentPage = parseInt(btn.dataset.page, 10); renderRecords(); };
+  });
+}
+
+async function loadRecords(){
+  const { data, error } = await sb.from("records")
+    .select("*, record_relationships(relationship_id, relationships(person_name)), record_shares(id, share_method, share_token), media(id, storage_path, media_type), record_folders(folder_id)")
+    .is("parent_record_id", null)
+    .order("created_at", { ascending: false });
+  if (error){ toast("불러오기 실패: " + error.message); return; }
+  state.records = data || [];
+}
+
+async function renderRecords(){
+  await loadRelationships();
+  await loadFolders();
+  await loadRecords();
+  const app = document.getElementById("app");
+  let filtered = state.records.filter(r => recordsFilter === "all" || r.status === recordsFilter);
+  if (folderFilter){
+    filtered = filtered.filter(r => (r.record_folders||[]).some(f => f.folder_id === folderFilter));
+  }
+  if (personFilterView){
+    filtered = filtered.filter(r => (r.record_relationships||[]).some(x => x.relationship_id === personFilterView));
+  }
+
+  const pageSize = state.profile?.records_per_page || 10;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+  const pageItems = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const activeFilterCount = (recordsFilter!=='all'?1:0) + (personFilterView?1:0) + (folderFilter?1:0);
+
+  app.innerHTML = `
+    <div class="panel" id="recList" style="margin-top:0">
+      ${pageItems.length ? "" : `<div class="empty">해당하는 기록이 없습니다.</div>`}
+    </div>
+    ${totalPages > 1 ? `<div class="row" id="pager" style="justify-content:center"></div>` : ""}
+    <div class="row" style="justify-content:center;margin-top:14px">
+      <button class="btn ghost small" id="filterOpenBtn">🔎 필터${activeFilterCount ? ` (${activeFilterCount})` : ""}</button>
+    </div>
+    <div class="modalOverlay" id="filterModal">
+      <div class="modalPanel">
+        <div class="modalHead">
+          <strong>필터</strong>
+          <button class="iconbtn" id="filterModalClose">✕</button>
+        </div>
+        <label>상태</label>
+        <select id="filterStatus">
+          <option value="all" ${recordsFilter==='all'?'selected':''}>전체 상태</option>
+          <option value="draft" ${recordsFilter==='draft'?'selected':''}>임시저장</option>
+          <option value="saved" ${recordsFilter==='saved'?'selected':''}>저장됨</option>
+        </select>
+        ${state.relationships.length ? `
+        <label>소중한 존재</label>
+        <select id="filterPerson">
+          <option value="">전체 소중한 존재</option>
+          ${state.relationships.map(p=>`<option value="${p.id}" ${personFilterView===p.id?'selected':''}>${p.person_name}</option>`).join("")}
+        </select>` : ""}
+        <label>글모음</label>
+        <select id="filterFolder">
+          <option value="">전체 글모음</option>
+          ${state.folders.map(f=>`<option value="${f.id}" ${folderFilter===f.id?'selected':''}>${f.name}</option>`).join("")}
+        </select>
+        <div class="row">
+          <button class="btn small" id="filterApply">적용</button>
+          <button class="btn ghost small" id="filterReset">초기화</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById("filterOpenBtn").onclick = () => document.getElementById("filterModal").classList.add("open");
+  document.getElementById("filterModalClose").onclick = () => document.getElementById("filterModal").classList.remove("open");
+  document.getElementById("filterApply").onclick = () => {
+    recordsFilter = document.getElementById("filterStatus").value;
+    const personSel = document.getElementById("filterPerson");
+    personFilterView = personSel ? (personSel.value || null) : null;
+    folderFilter = document.getElementById("filterFolder").value || null;
+    currentPage = 1;
+    renderRecords();
+  };
+  document.getElementById("filterReset").onclick = () => {
+    recordsFilter = "all"; personFilterView = null; folderFilter = null; currentPage = 1;
+    renderRecords();
+  };
+
+  if (totalPages > 1){
+    renderPager(currentPage, totalPages);
+  }
+
+  const list = document.getElementById("recList");
+  list.innerHTML = pageItems.map(r => renderRecordItem(r)).join("");
+
+
+  list.querySelectorAll("[data-open]").forEach(btn=>{
+    btn.onclick = () => { openRecordId = (openRecordId === btn.dataset.open) ? null : btn.dataset.open; continueUnlocked = false; renderRecords(); };
+  });
+  list.querySelectorAll("[data-continue]").forEach(btn=>{
+    btn.onclick = () => startContinue(btn.dataset.continue);
+  });
+  list.querySelectorAll("[data-share]").forEach(btn=>{
+    btn.onclick = () => createShareLink(btn.dataset.share);
+  });
+  list.querySelectorAll("[data-savechange]").forEach(btn=>{
+    btn.onclick = () => submitRecordEdit(btn.dataset.savechange, "saved");
+  });
+  list.querySelectorAll("[data-draftchange]").forEach(btn=>{
+    btn.onclick = () => submitRecordEdit(btn.dataset.draftchange, "draft");
+  });
+  list.querySelectorAll("[data-foldertag]").forEach(tag=>{
+    tag.onclick = () => toggleRecordFolder(tag.dataset.foldertag, tag.dataset.folderid, !tag.classList.contains("on"), tag);
+  });
+  list.querySelectorAll("[data-delrecord]").forEach(btn=>{
+    btn.onclick = () => deleteRecord(btn.dataset.delrecord);
+  });
+  list.querySelectorAll("[data-moreopen]").forEach(btn=>{
+    btn.onclick = () => document.getElementById("rModal-" + btn.dataset.moreopen).classList.add("open");
+  });
+  list.querySelectorAll("[data-moreclose], [data-moredone]").forEach(btn=>{
+    btn.onclick = () => {
+      const id = btn.dataset.moreclose || btn.dataset.moredone;
+      document.getElementById("rModal-" + id).classList.remove("open");
+    };
+  });
+  list.querySelectorAll("[data-personsave]").forEach(btn=>{
+    btn.onclick = () => savePersonLink(btn.dataset.personsave);
+  });
+  list.querySelectorAll("[id^='rFile-']").forEach(input=>{
+    const id = input.id.replace("rFile-", "");
+    input.addEventListener("change", (e) => {
+      const f = e.target.files[0];
+      const nameEl = document.getElementById("rFileName-" + id);
+      if (nameEl) nameEl.textContent = f ? f.name : "클릭하여 1개 선택";
+    });
+  });
+  list.querySelectorAll("[data-attachsave]").forEach(btn=>{
+    btn.onclick = () => saveAttachment(btn.dataset.attachsave, btn.dataset.mediaid || null);
+  });
+  list.querySelectorAll("[data-delmedia]").forEach(btn=>{
+    btn.onclick = () => deleteAttachment(btn.dataset.delmedia, btn.dataset.mediaid);
+  });
+
+  // 첨부파일 서명 URL 비동기 로딩
+  filtered.forEach(r => {
+    const m = (r.media||[])[0];
+    if (m){
+      sb.storage.from("media").createSignedUrl(m.storage_path, 3600).then(({data, error})=>{
+        if (error) return;
+        const el = document.getElementById("media-" + r.id);
+        if (el) el.href = data.signedUrl;
+      });
+    }
+  });
+}
+
+async function saveAttachment(recordId, existingMediaId){
+  const file = document.getElementById("rFile-" + recordId).files[0];
+  if (!file) return toast("파일을 선택해주세요.");
+  const path = `${state.user.id}/${recordId}/${file.name}`;
+  const { error: upErr } = await sb.storage.from("media").upload(path, file, { upsert: true });
+  if (upErr) return toast("업로드 실패: " + upErr.message);
+  if (existingMediaId){
+    const { error } = await sb.from("media").update({ storage_path: path, media_type: file.type || "file" }).eq("id", existingMediaId);
+    if (error) return toast("저장 실패: " + error.message);
+  } else {
+    const { error } = await sb.from("media").insert({ record_id: recordId, storage_path: path, media_type: file.type || "file" });
+    if (error) return toast("저장 실패: " + error.message);
+  }
+  toast("첨부파일을 저장했습니다.");
+  renderRecords();
+}
+
+async function deleteAttachment(recordId, mediaId){
+  if (!confirm("첨부파일을 삭제하시겠습니까?")) return;
+  const rec = state.records.find(r => r.id === recordId);
+  const m = (rec?.media || [])[0];
+  if (m){
+    await sb.storage.from("media").remove([m.storage_path]).catch(()=>{});
+  }
+  const { error } = await sb.from("media").delete().eq("id", mediaId);
+  if (error) return toast("삭제 실패: " + error.message);
+  toast("첨부파일을 삭제했습니다.");
+  renderRecords();
+}
+
+async function savePersonLink(recordId){
+  const personId = document.getElementById("rPerson-" + recordId).value || null;
+  await sb.from("record_relationships").delete().eq("record_id", recordId);
+  if (personId){
+    const { error } = await sb.from("record_relationships").insert({ record_id: recordId, relationship_id: personId });
+    if (error) return toast("연결 실패: " + error.message);
+  }
+  toast("소중한 존재를 저장했습니다.");
+  renderRecords();
+}
+
+async function toggleRecordFolder(recordId, folderId, checked, tagEl){
+  if (checked){
+    const { error } = await sb.from("record_folders").insert({ record_id: recordId, folder_id: folderId });
+    if (error) return toast("연결 실패: " + error.message);
+  } else {
+    const { error } = await sb.from("record_folders").delete().eq("record_id", recordId).eq("folder_id", folderId);
+    if (error) return toast("해제 실패: " + error.message);
+  }
+  const rec = state.records.find(r => r.id === recordId);
+  if (rec){
+    rec.record_folders = rec.record_folders || [];
+    if (checked){
+      if (!rec.record_folders.some(f=>f.folder_id===folderId)) rec.record_folders.push({ folder_id: folderId });
+    } else {
+      rec.record_folders = rec.record_folders.filter(f=>f.folder_id!==folderId);
+    }
+  }
+  if (tagEl) tagEl.classList.toggle("on", checked);
+}
+
+function renderRecordItem(r){
+  const people = (r.record_relationships||[]).map(x=>x.relationships?.person_name).filter(Boolean);
+  const shared = (r.record_shares||[]).length > 0;
+  const kindLabel = r.kind === "moment" ? "오늘의 멈춤" : "기록하기";
+  const media = (r.media||[])[0];
+  const isOpen = openRecordId === r.id;
+
+  if (isOpen){
+    const myFolderIds = new Set((r.record_folders||[]).map(f=>f.folder_id));
+    const locked = r.status === "saved" && !continueUnlocked;
+    const currentPersonId = (r.record_relationships||[])[0]?.relationship_id || "";
+    const folderTagsHtml = state.folders.length ? state.folders.map(f=>`
+      <span class="tagtoggle ${myFolderIds.has(f.id)?'on':''}" data-foldertag="${r.id}" data-folderid="${f.id}">${f.name}</span>
+    `).join("") : `<div class="muted">등록된 글모음이 없습니다.</div>`;
+    return `
+      <div class="record">
+        <span class="tag">${kindLabel}</span>
+        <span class="tag ${r.status}">${r.status === "saved" ? "저장" : "임시저장"}</span>
+        <input id="edit-title-${r.id}" style="margin-top:10px" value="${(r.title||"").replace(/"/g,'&quot;')}" placeholder="제목 없는 기록">
+        <textarea id="edit-body-${r.id}" style="margin-top:10px${locked ? ';background:var(--panel2);color:var(--sub)' : ''}" ${locked ? "readonly" : ""}>${r.body}</textarea>
+        <div class="row">
+          ${r.status === "saved" && locked ? `<button class="btn ghost small" data-continue="${r.id}">생각잇기</button>` : ""}
+          ${r.status === "saved" ? "" : `<button class="btn ghost small" data-draftchange="${r.id}">임시저장</button>`}
+          <button class="btn ghost small" data-savechange="${r.id}">저장</button>
+          <button class="btn ghost small" data-open="${r.id}">닫기</button>
+          <button class="btn ghost small" style="color:var(--danger);border-color:var(--danger)" data-delrecord="${r.id}">삭제</button>
+          ${r.status === "saved" && r.kind === "record" ? `<button class="btn ghost small" data-share="${r.id}">공유 링크 만들기</button>` : ""}
+          <button class="iconbtn" data-moreopen="${r.id}" title="더보기" style="margin-left:auto">⋮</button>
+        </div>
+      </div>
+      <div class="modalOverlay" id="rModal-${r.id}">
+        <div class="modalPanel">
+          <div class="modalHead">
+            <strong>더보기</strong>
+            <button class="iconbtn" data-moreclose="${r.id}">✕</button>
+          </div>
+          ${r.kind === "record" ? `
+          <label>소중한 존재</label>
+          <select id="rPerson-${r.id}">
+            <option value="">연결하지 않음</option>
+            ${state.relationships.map(p=>`<option value="${p.id}" ${currentPersonId===p.id?'selected':''}>${p.person_name}${p.relation_type ? " · "+p.relation_type : ""}</option>`).join("")}
+          </select>
+          <button class="btn small" data-personsave="${r.id}" style="margin-top:10px">소중한 존재 저장</button>
+          ` : ""}
+          <label style="margin-top:${r.kind==='record'?'16px':'0'}">글모음</label>
+          <div>${folderTagsHtml}</div>
+          ${r.kind === "record" ? `
+          <label style="margin-top:16px">첨부파일</label>
+          ${media ? `
+            <div class="muted">현재: <a id="media-${r.id}" href="#" target="_blank">${media.storage_path.split("/").pop()}</a>
+              <button class="actionlink danger" data-delmedia="${r.id}" data-mediaid="${media.id}">[삭제]</button>
+            </div>
+          ` : `<div class="muted">첨부파일 없음</div>`}
+          <label class="dropzone" for="rFile-${r.id}" style="margin-top:8px">
+            <div style="font-size:20px">📎</div>
+            <div style="font-size:12px">${media ? "새 파일로 교체" : "파일 첨부하기"}</div>
+            <div class="muted" style="font-size:11px" id="rFileName-${r.id}">클릭하여 1개 선택</div>
+            <input id="rFile-${r.id}" type="file" accept="image/*,.zip">
+          </label>
+          <button class="btn small" data-attachsave="${r.id}" data-mediaid="${media?.id||''}" style="margin-top:8px">첨부파일 저장</button>
+          ` : ""}
+          <button class="btn ghost small" data-moredone="${r.id}" style="margin-top:14px">닫기</button>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="record">
+      <span class="tag">${kindLabel}</span>
+      <span class="tag ${r.status}">${r.status === "saved" ? "저장" : "임시저장"}</span>
+      ${people.map(p=>`<span class="tag">${p}</span>`).join("")}
+      ${shared ? `<span class="tag saved">공유됨</span>` : ""}
+      ${media ? `<span class="tag">첨부있음</span>` : ""}
+      <div style="margin-top:8px;font-weight:600;cursor:pointer" data-open="${r.id}">${r.title || (r.kind === "moment" ? "(오늘의 멈춤)" : "제목 없는 기록")}</div>
+      <div class="muted" style="margin-top:4px;white-space:pre-wrap;cursor:pointer" data-open="${r.id}">${r.body}</div>
+    </div>
+  `;
+}
+
+function startContinue(id){
+  continueUnlocked = true;
+  const ta = document.getElementById("edit-body-" + id);
+  if (!ta) return;
+  ta.readOnly = false;
+  ta.style.background = "";
+  ta.style.color = "";
+  const now = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  const stamp = `${now.getFullYear()}.${pad(now.getMonth()+1)}.${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  ta.value = ta.value + `\n\n--> 이어쓰기 ${stamp}\n`;
+  ta.focus();
+  ta.selectionStart = ta.selectionEnd = ta.value.length;
+  const btn = document.querySelector(`[data-continue="${id}"]`);
+  if (btn) btn.style.display = "none";
+}
+
+async function deleteRecord(id){
+  if (!confirm("이 기록을 삭제하시겠습니까? 되돌릴 수 없습니다.")) return;
+  const rec = state.records.find(r => r.id === id);
+  const media = rec?.media?.[0];
+  if (media){
+    await sb.storage.from("media").remove([media.storage_path]).catch(()=>{});
+  }
+  const { error } = await sb.from("records").delete().eq("id", id);
+  if (error) return toast("삭제 실패: " + error.message);
+  toast("삭제했습니다.");
+  openRecordId = null;
+  renderRecords();
+}
+
+async function submitRecordEdit(id, status){
+  const title = document.getElementById("edit-title-" + id).value.trim() || null;
+  const body = document.getElementById("edit-body-" + id).value.trim();
+  if (!body) return toast("내용을 입력해주세요.");
+  const { error } = await sb.from("records").update({ title, body, status, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) return toast("수정 실패: " + error.message);
+  toast(status === "saved" ? "저장했습니다." : "임시저장했습니다.");
+  openRecordId = null;
+  renderRecords();
+}
+
+async function createShareLink(recordId){
+  const token = crypto.randomUUID();
+  const { error } = await sb.from("record_shares").insert({
+    record_id: recordId, share_method: "link", share_token: token
+  });
+  if (error) return toast("공유 실패: " + error.message);
+  const url = `${location.origin}${location.pathname}?share=${token}`;
+  await navigator.clipboard?.writeText(url).catch(()=>{});
+  toast("공유 링크를 클립보드에 복사했습니다.");
+  renderRecords();
+}
+
+// ---------- 소중한 존재 (마스터 관리, 설정 하위 탭에서 렌더링됨) ----------
+async function loadRelationships(){
+  const { data, error } = await sb.from("relationships")
+    .select("*").eq("owner_id", state.user.id).order("created_at");
+  if (error){ toast("불러오기 실패: " + error.message); return; }
+  state.relationships = data || [];
+}
+
+let openPersonId = null;
+
+async function renderPeopleTab(){
+  await loadRelationships();
+  document.getElementById("settingsBody").innerHTML = `
+    <div class="panel">
+      <label>이름</label>
+      <input id="pName" placeholder="예: 아버지, 오래된 친구">
+      <label>관계 (선택)</label>
+      <input id="pType" placeholder="예: 가족, 친구, 반려동물">
+      <button class="btn" id="pAdd" style="margin-top:14px">추가</button>
+    </div>
+    <div class="panel">
+      ${state.relationships.length ? state.relationships.map(r=>renderPersonItem(r)).join("") : `<div class="empty">등록된 소중한 존재가 없습니다.</div>`}
+    </div>
+  `;
+  document.getElementById("pAdd").onclick = async () => {
+    const person_name = document.getElementById("pName").value.trim();
+    const relation_type = document.getElementById("pType").value.trim() || null;
+    if (!person_name) return toast("이름을 입력해주세요.");
+    const { error } = await sb.from("relationships").insert({ owner_id: state.user.id, person_name, relation_type });
+    if (error) return toast("추가 실패: " + error.message);
+    renderPeopleTab();
+  };
+  document.querySelectorAll("[data-editperson]").forEach(btn=>{
+    btn.onclick = () => { openPersonId = (openPersonId === btn.dataset.editperson) ? null : btn.dataset.editperson; renderPeopleTab(); };
+  });
+  document.querySelectorAll("[data-saveperson]").forEach(btn=>{
+    btn.onclick = () => savePerson(btn.dataset.saveperson);
+  });
+  document.querySelectorAll("[data-delperson]").forEach(btn=>{
+    btn.onclick = () => deletePerson(btn.dataset.delperson);
+  });
+}
+
+function renderPersonItem(r){
+  if (openPersonId === r.id){
+    return `
+      <div class="record">
+        <label>이름</label>
+        <input id="editPName-${r.id}" value="${(r.person_name||"").replace(/"/g,'&quot;')}">
+        <label>관계</label>
+        <input id="editPType-${r.id}" value="${(r.relation_type||"").replace(/"/g,'&quot;')}">
+        <div class="row">
+          <button class="btn small" data-saveperson="${r.id}">저장</button>
+          <button class="btn ghost small" data-editperson="${r.id}">취소</button>
+          <button class="actionlink danger" data-delperson="${r.id}">[삭제]</button>
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <div class="record">
+      <div class="cardhead">
+        <div>
+          <div style="font-weight:600">${r.person_name}</div>
+          <div class="muted">${r.relation_type || ""}</div>
+        </div>
+        <div>
+          <button class="actionlink" data-editperson="${r.id}">[변경]</button>
+          <button class="actionlink danger" data-delperson="${r.id}">[삭제]</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function savePerson(id){
+  const person_name = document.getElementById("editPName-" + id).value.trim();
+  const relation_type = document.getElementById("editPType-" + id).value.trim() || null;
+  if (!person_name) return toast("이름을 입력해주세요.");
+  const { error } = await sb.from("relationships").update({ person_name, relation_type }).eq("id", id);
+  if (error) return toast("수정 실패: " + error.message);
+  toast("수정했습니다.");
+  openPersonId = null;
+  renderPeopleTab();
+}
+
+async function deletePerson(id){
+  if (!confirm("이 소중한 존재를 삭제하시겠습니까? 연결된 기록은 남고 연결만 해제됩니다.")) return;
+  const { error } = await sb.from("relationships").delete().eq("id", id);
+  if (error) return toast("삭제 실패: " + error.message);
+  toast("삭제했습니다.");
+  renderPeopleTab();
+}
+
+// ---------- 책 만들기 ----------
+let currentBookId = null;
+let bookPicker = { sectionId: null, selected: new Set() };
+let lastPickerResultIds = [];
+let editingBookTitle = false;
+let editingSectionId = null;
+
+async function loadBooks(){
+  const { data, error } = await sb.from("book_projects").select("*").eq("owner_id", state.user.id).order("created_at", { ascending: false });
+  if (error){ toast("불러오기 실패: " + error.message); return []; }
+  return data || [];
+}
+
+async function loadBookDetail(bookId){
+  const { data: sections, error } = await sb.from("book_sections")
+    .select("*, book_section_records(record_id, sort_order, records(id, title, body, kind, media(storage_path, media_type)))")
+    .eq("book_id", bookId)
+    .order("sort_order");
+  if (error){ toast("불러오기 실패: " + error.message); return { book: null, sections: [] }; }
+  const { data: book } = await sb.from("book_projects").select("*").eq("id", bookId).single();
+  return { book, sections: sections || [] };
+}
+
+// ---------- PDF 생성 (한글 폰트 임베드 + 표지/목차/본문/사진/페이지번호) ----------
+let koreanFontLoaded = false;
+
+function arrayBufferToBase64(buffer){
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i++){ binary += String.fromCharCode(bytes[i]); }
+  return btoa(binary);
+}
+
+async function loadKoreanFont(doc){
+  if (koreanFontLoaded){ doc.setFont("NanumGothic"); return; }
+  const res = await fetch("https://cdn.jsdelivr.net/font-nanum/1.0/nanumgothic/v3/NanumGothic-Regular.ttf");
+  const buf = await res.arrayBuffer();
+  const base64 = arrayBufferToBase64(buf);
+  doc.addFileToVFS("NanumGothic-Regular.ttf", base64);
+  doc.addFont("NanumGothic-Regular.ttf", "NanumGothic", "normal");
+  doc.setFont("NanumGothic");
+  koreanFontLoaded = true;
+}
+
+async function imageToDataUrl(storagePath){
+  const { data, error } = await sb.storage.from("media").createSignedUrl(storagePath, 300);
+  if (error) return null;
+  const res = await fetch(data.signedUrl);
+  const blob = await res.blob();
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(blob);
+  });
+}
+
+function dataUrlFormat(dataUrl){
+  const match = /^data:image\/(png|jpeg|jpg);/.exec(dataUrl);
+  if (!match) return "JPEG";
+  const f = match[1].toUpperCase();
+  return f === "JPG" ? "JPEG" : f;
+}
+
+function loadImageSize(dataUrl){
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+async function generateBookPdf(book, sections){
+  toast("PDF를 만들고 있습니다...");
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  await loadKoreanFont(doc);
+
+  const PAGE_W = 595.28, PAGE_H = 841.89;
+  const MARGIN_MAP = { narrow: 30, normal: 50, wide: 70 };
+  const MARGIN = MARGIN_MAP[book.margin_size] || 50;
+  const USABLE_W = PAGE_W - MARGIN * 2;
+  const BODY_SIZE = 11, TITLE_SIZE = 13, LINE_H = 15, MAX_IMG_H = 260;
+
+  let bgDataUrl = null, bgFormat = null;
+  if (book.background_image_path){
+    bgDataUrl = await imageToDataUrl(book.background_image_path);
+    if (bgDataUrl) bgFormat = dataUrlFormat(bgDataUrl);
+  }
+  function drawBg(){
+    if (bgDataUrl) doc.addImage(bgDataUrl, bgFormat, 0, 0, PAGE_W, PAGE_H);
+  }
+  function addContentPage(){
+    doc.addPage();
+    drawBg();
+  }
+
+  // 섹션별 콘텐츠 블록 구성 + 이미지 사전 로딩
+  const sectionBlocks = [];
+  for (const s of sections){
+    const records = (s.book_section_records || []).sort((a,b)=>a.sort_order-b.sort_order);
+    const items = [];
+    for (const sr of records){
+      const rec = sr.records;
+      if (!rec) continue;
+      const media = (rec.media || [])[0];
+      let imgData = null, imgSize = null;
+      if (media && media.media_type && media.media_type.startsWith("image/")){
+        imgData = await imageToDataUrl(media.storage_path);
+        if (imgData) imgSize = await loadImageSize(imgData);
+      }
+      items.push({ title: rec.title || "(제목 없음)", body: rec.body || "", imgData, imgSize });
+    }
+    sectionBlocks.push({ title: s.title, items });
+  }
+
+  // 1차: 페이지 수 계산 (실제로 그리지 않고 높이만 계산)
+  const CONTENT_START_PAGE = 3; // 1=표지, 2=목차
+  let page = CONTENT_START_PAGE, y = MARGIN;
+  const sectionStartPages = [];
+  function advance(h){
+    if (y + h > PAGE_H - MARGIN){ page++; y = MARGIN; }
+    y += h;
+  }
+  for (const sec of sectionBlocks){
+    sectionStartPages.push(page);
+    advance(LINE_H + 10); // 섹션 제목
+    for (const item of sec.items){
+      advance(LINE_H + 4); // 기록 제목
+      const lines = doc.splitTextToSize(item.body, USABLE_W);
+      advance(lines.length * LINE_H);
+      if (item.imgSize){
+        const ratio = Math.min(USABLE_W / item.imgSize.w, MAX_IMG_H / item.imgSize.h, 1);
+        advance(item.imgSize.h * ratio + 10);
+      }
+      advance(10); // 기록 간 여백
+    }
+  }
+
+  // 2차: 실제 그리기
+  // 표지
+  drawBg();
+  doc.setFontSize(22);
+  doc.text(book.title, PAGE_W/2, PAGE_H/2 - 20, { align: "center" });
+  doc.setFontSize(12);
+  doc.text(new Date().toLocaleDateString("ko-KR"), PAGE_W/2, PAGE_H/2 + 10, { align: "center" });
+
+  // 목차
+  addContentPage();
+  doc.setFontSize(TITLE_SIZE + 4);
+  doc.text("목차", MARGIN, MARGIN);
+  doc.setFontSize(BODY_SIZE);
+  let tocY = MARGIN + 30;
+  sectionBlocks.forEach((sec, i) => {
+    doc.text(sec.title, MARGIN, tocY);
+    doc.text(String(sectionStartPages[i]), PAGE_W - MARGIN, tocY, { align: "right" });
+    tocY += LINE_H + 4;
+  });
+
+  // 본문
+  addContentPage();
+  y = MARGIN;
+  for (const sec of sectionBlocks){
+    if (y !== MARGIN){ addContentPage(); y = MARGIN; }
+    doc.setFontSize(TITLE_SIZE);
+    doc.text(sec.title, MARGIN, y);
+    y += LINE_H + 10;
+    for (const item of sec.items){
+      if (y + LINE_H > PAGE_H - MARGIN){ addContentPage(); y = MARGIN; }
+      doc.setFontSize(BODY_SIZE);
+      doc.text(item.title, MARGIN, y);
+      y += LINE_H + 4;
+      const lines = doc.splitTextToSize(item.body, USABLE_W);
+      for (const line of lines){
+        if (y + LINE_H > PAGE_H - MARGIN){ addContentPage(); y = MARGIN; }
+        doc.text(line, MARGIN, y);
+        y += LINE_H;
+      }
+      if (item.imgData && item.imgSize){
+        const ratio = Math.min(USABLE_W / item.imgSize.w, MAX_IMG_H / item.imgSize.h, 1);
+        const w = item.imgSize.w * ratio, h = item.imgSize.h * ratio;
+        if (y + h > PAGE_H - MARGIN){ addContentPage(); y = MARGIN; }
+        doc.addImage(item.imgData, "JPEG", MARGIN, y, w, h);
+        y += h + 10;
+      }
+      y += 10;
+    }
+  }
+
+  // 페이지 번호 (표지·목차 제외, 본문부터)
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let p = CONTENT_START_PAGE; p <= totalPages; p++){
+    doc.setPage(p);
+    doc.setFontSize(9);
+    doc.text(String(p), PAGE_W/2, PAGE_H - 25, { align: "center" });
+  }
+
+  const blob = doc.output("blob");
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+}
+
+async function renderBookTab(){
+  if (!currentBookId) return renderBookList();
+  return renderBookDetail();
+}
+
+async function renderBookList(){
+  const books = await loadBooks();
+  document.getElementById("settingsBody").innerHTML = `
+    <div class="panel">
+      <label>새 책 프로젝트 이름</label>
+      <input id="newBookTitle" placeholder="예: 2026년의 나">
+      <button class="btn" id="newBookAdd" style="margin-top:12px">만들기</button>
+    </div>
+    <div class="panel">
+      ${books.length ? books.map(b=>`
+        <div class="record cardhead">
+          <div>
+            <div style="font-weight:600;cursor:pointer" data-openbook="${b.id}">${b.title}</div>
+            <div class="muted">${b.status === "draft" ? "작업 중" : b.status}</div>
+          </div>
+          <button class="actionlink danger" data-delbook="${b.id}">[삭제]</button>
+        </div>
+      `).join("") : `<div class="empty">아직 만든 책이 없습니다. 위에서 새로 만들어보세요.</div>`}
+    </div>
+  `;
+  document.getElementById("newBookAdd").onclick = async () => {
+    const title = document.getElementById("newBookTitle").value.trim();
+    if (!title) return toast("책 이름을 입력해주세요.");
+    const { data, error } = await sb.from("book_projects").insert({ owner_id: state.user.id, title }).select().single();
+    if (error) return toast("생성 실패: " + error.message);
+    currentBookId = data.id;
+    bookPicker = { sectionId: null, selected: new Set() };
+    renderBookTab();
+  };
+  document.querySelectorAll("[data-openbook]").forEach(el=>{
+    el.onclick = () => { currentBookId = el.dataset.openbook; bookPicker = { sectionId: null, selected: new Set() }; renderBookTab(); };
+  });
+  document.querySelectorAll("[data-delbook]").forEach(btn=>{
+    btn.onclick = async () => {
+      if (!confirm("이 책을 삭제하시겠습니까? 안의 장 구성도 함께 삭제됩니다 (원본 기록은 삭제되지 않습니다).")) return;
+      const { error } = await sb.from("book_projects").delete().eq("id", btn.dataset.delbook);
+      if (error) return toast("삭제 실패: " + error.message);
+      toast("삭제했습니다.");
+      renderBookList();
+    };
+  });
+}
+
+async function renderBookDetail(){
+  const { book, sections } = await loadBookDetail(currentBookId);
+  if (!book){ currentBookId = null; return renderBookList(); }
+
+  await loadRecords(); // 필터/검색용 (전체 records, saved만 추림)
+  await loadFolders();
+  if (!state.relationships.length) await loadRelationships();
+  const savedRecords = state.records.filter(r => r.status === "saved");
+
+  document.getElementById("settingsBody").innerHTML = `
+    <div class="row" style="margin-top:0">
+      <button class="btn ghost small" id="backList">← 책 목록</button>
+      <button class="btn small" id="toPreview">미리보기 (PDF)</button>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      ${editingBookTitle ? `
+        <input id="editBookTitle" value="${book.title.replace(/"/g,'&quot;')}">
+        <div class="row"><button class="btn small" id="saveBookTitle">저장</button><button class="btn ghost small" id="cancelBookTitle">취소</button></div>
+      ` : `
+        <div class="cardhead"><span style="font-weight:700;font-size:18px">${book.title}</span><button class="actionlink" id="editBookTitleBtn">[변경]</button></div>
+      `}
+      <label>새 장(섹션) 추가</label>
+      <input id="newSectionTitle" placeholder="예: 1부. 시작">
+      <button class="btn small" id="newSectionAdd" style="margin-top:10px">장 추가</button>
+    </div>
+    <div class="panel">
+      <div style="font-weight:600">PDF 설정</div>
+      <label>배경 이미지 (모든 페이지에 적용, 선택)</label>
+      ${book.background_image_path ? `
+        <div class="muted" id="bgBookPreviewWrap">현재 배경이 설정되어 있습니다.
+          <button class="actionlink danger" id="bgBookRemove">[제거]</button>
+        </div>
+      ` : `<div class="muted">설정된 배경이 없습니다.</div>`}
+      <label class="dropzone" for="bgBookFile" style="margin-top:8px">
+        <div style="font-size:20px">🖼️</div>
+        <div style="font-size:12px">${book.background_image_path ? "새 이미지로 교체" : "배경 이미지 업로드"}</div>
+        <div class="muted" style="font-size:11px" id="bgBookFileName">클릭하여 선택</div>
+        <input id="bgBookFile" type="file" accept="image/*">
+      </label>
+      <button class="btn small" id="bgBookSave" style="margin-top:8px">배경 저장</button>
+      <label style="margin-top:16px">여백 크기</label>
+      <select id="marginSel">
+        <option value="narrow" ${book.margin_size==='narrow'?'selected':''}>좁게</option>
+        <option value="normal" ${(!book.margin_size||book.margin_size==='normal')?'selected':''}>보통</option>
+        <option value="wide" ${book.margin_size==='wide'?'selected':''}>넓게</option>
+      </select>
+    </div>
+    ${sections.map(s => renderSectionEditor(s, savedRecords)).join("")}
+  `;
+  document.getElementById("backList").onclick = () => { currentBookId = null; bookPicker = { sectionId: null, selected: new Set() }; renderBookTab(); };
+  document.getElementById("toPreview").onclick = () => generateBookPdf(book, sections);
+  document.getElementById("bgBookFile").addEventListener("change", (e) => {
+    const f = e.target.files[0];
+    document.getElementById("bgBookFileName").textContent = f ? f.name : "클릭하여 선택";
+  });
+  document.getElementById("bgBookSave").onclick = async () => {
+    const file = document.getElementById("bgBookFile").files[0];
+    if (!file) return toast("이미지를 선택해주세요.");
+    const path = `${state.user.id}/book-bg/${book.id}/${file.name}`;
+    const { error: upErr } = await sb.storage.from("media").upload(path, file, { upsert: true });
+    if (upErr) return toast("업로드 실패: " + upErr.message);
+    const { error } = await sb.from("book_projects").update({ background_image_path: path }).eq("id", book.id);
+    if (error) return toast("저장 실패: " + error.message);
+    toast("배경을 저장했습니다.");
+    renderBookTab();
+  };
+  const bgRemoveBtn = document.getElementById("bgBookRemove");
+  if (bgRemoveBtn){
+    bgRemoveBtn.onclick = async () => {
+      if (!confirm("배경 이미지를 제거하시겠습니까?")) return;
+      const { error } = await sb.from("book_projects").update({ background_image_path: null }).eq("id", book.id);
+      if (error) return toast("제거 실패: " + error.message);
+      toast("배경을 제거했습니다.");
+      renderBookTab();
+    };
+  }
+  document.getElementById("marginSel").onchange = async (e) => {
+    const { error } = await sb.from("book_projects").update({ margin_size: e.target.value }).eq("id", book.id);
+    if (error) return toast("적용 실패: " + error.message);
+    toast("여백 설정을 저장했습니다.");
+  };
+  document.getElementById("newSectionAdd").onclick = async () => {
+    const title = document.getElementById("newSectionTitle").value.trim();
+    if (!title) return toast("장 이름을 입력해주세요.");
+    const { error } = await sb.from("book_sections").insert({ book_id: book.id, title, sort_order: sections.length });
+    if (error) return toast("추가 실패: " + error.message);
+    renderBookTab();
+  };
+  if (editingBookTitle){
+    document.getElementById("saveBookTitle").onclick = async () => {
+      const title = document.getElementById("editBookTitle").value.trim();
+      if (!title) return toast("책 이름을 입력해주세요.");
+      const { error } = await sb.from("book_projects").update({ title }).eq("id", book.id);
+      if (error) return toast("수정 실패: " + error.message);
+      editingBookTitle = false;
+      renderBookTab();
+    };
+    document.getElementById("cancelBookTitle").onclick = () => { editingBookTitle = false; renderBookTab(); };
+  } else {
+    document.getElementById("editBookTitleBtn").onclick = () => { editingBookTitle = true; renderBookTab(); };
+  }
+  document.querySelectorAll("[data-removerecord]").forEach(btn=>{
+    btn.onclick = async () => {
+      const [sectionId, recordId] = btn.dataset.removerecord.split("|");
+      const { error } = await sb.from("book_section_records").delete().eq("section_id", sectionId).eq("record_id", recordId);
+      if (error) return toast("제거 실패: " + error.message);
+      renderBookTab();
+    };
+  });
+  document.querySelectorAll("[data-editsection]").forEach(btn=>{
+    btn.onclick = () => { editingSectionId = (editingSectionId === btn.dataset.editsection) ? null : btn.dataset.editsection; renderBookTab(); };
+  });
+  document.querySelectorAll("[data-savesection]").forEach(btn=>{
+    btn.onclick = async () => {
+      const title = document.getElementById("editSectionTitle-" + btn.dataset.savesection).value.trim();
+      if (!title) return toast("장 이름을 입력해주세요.");
+      const { error } = await sb.from("book_sections").update({ title }).eq("id", btn.dataset.savesection);
+      if (error) return toast("수정 실패: " + error.message);
+      editingSectionId = null;
+      renderBookTab();
+    };
+  });
+  document.querySelectorAll("[data-delsection]").forEach(btn=>{
+    btn.onclick = async () => {
+      if (!confirm("이 장을 삭제하시겠습니까? 안의 기록 배정 정보도 함께 삭제됩니다 (원본 기록은 삭제되지 않습니다).")) return;
+      const { error } = await sb.from("book_sections").delete().eq("id", btn.dataset.delsection);
+      if (error) return toast("삭제 실패: " + error.message);
+      toast("삭제했습니다.");
+      renderBookTab();
+    };
+  });
+  document.querySelectorAll("[data-openpicker]").forEach(btn=>{
+    btn.onclick = () => { bookPicker = { sectionId: btn.dataset.openpicker, selected: new Set() }; renderBookTab(); };
+  });
+  document.querySelectorAll("[data-closepicker]").forEach(btn=>{
+    btn.onclick = () => { bookPicker = { sectionId: null, selected: new Set() }; renderBookTab(); };
+  });
+  const searchBtn = document.getElementById("pickerSearch");
+  if (searchBtn){
+    searchBtn.onclick = () => runPickerSearch(sections);
+    document.querySelectorAll("[data-addselected]").forEach(btn=>{
+      btn.onclick = () => addSelectedToSection(btn.dataset.addselected, sections);
+    });
+  }
+}
+
+function currentPickerFilters(){
+  return {
+    kind: document.getElementById("pfKind")?.value || "",
+    folder: document.getElementById("pfFolder")?.value || "",
+    person: document.getElementById("pfPerson")?.value || "",
+    from: document.getElementById("pfFrom")?.value || "",
+    to: document.getElementById("pfTo")?.value || "",
+    keyword: document.getElementById("pfKeyword")?.value.trim() || "",
+  };
+}
+
+function filterPickerRecords(savedRecords, excludeIds, filters){
+  return savedRecords.filter(r => {
+    if (excludeIds.has(r.id)) return false;
+    if (filters.kind && r.kind !== filters.kind) return false;
+    if (filters.folder && !(r.record_folders||[]).some(f=>f.folder_id===filters.folder)) return false;
+    if (filters.person && !(r.record_relationships||[]).some(x=>x.relationship_id===filters.person)) return false;
+    if (filters.from && r.record_date < filters.from) return false;
+    if (filters.to && r.record_date > filters.to) return false;
+    if (filters.keyword){
+      const hay = ((r.title||"") + " " + r.body).toLowerCase();
+      if (!hay.includes(filters.keyword.toLowerCase())) return false;
+    }
+    return true;
+  });
+}
+
+function runPickerSearch(sections){
+  const section = sections.find(s => s.id === bookPicker.sectionId);
+  const already = new Set((section?.book_section_records||[]).map(sr=>sr.record_id));
+  const savedRecords = state.records.filter(r => r.status === "saved");
+  const filters = currentPickerFilters();
+  const results = filterPickerRecords(savedRecords, already, filters);
+  lastPickerResultIds = results.map(r => r.id);
+
+  const list = document.getElementById("pickerResults");
+  list.innerHTML = `
+    ${results.length ? `<div class="row" style="margin-top:0">
+      <button class="btn ghost small" id="pickAllBtn">전체선택</button>
+      <button class="btn ghost small" id="pickNoneBtn">전체해제</button>
+    </div>` : ""}
+    ${results.length ? results.map(r => `
+    <label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer">
+      <input type="checkbox" data-pickitem="${r.id}" ${bookPicker.selected.has(r.id)?'checked':''} style="width:auto;margin-top:3px">
+      <span>
+        <span class="tag">${r.kind==='moment'?'오늘의 멈춤':'기록하기'}</span>
+        <div style="font-weight:600;margin-top:4px">${r.title || "(제목 없음)"}</div>
+        <div class="muted" style="margin-top:2px">${r.body.slice(0,40)}${r.body.length>40?"...":""}</div>
+      </span>
+    </label>
+  `).join("") : `<div class="empty">조건에 맞는 기록이 없습니다.</div>`}
+  `;
+
+  list.querySelectorAll("[data-pickitem]").forEach(chk=>{
+    chk.onchange = () => {
+      if (chk.checked) bookPicker.selected.add(chk.dataset.pickitem);
+      else bookPicker.selected.delete(chk.dataset.pickitem);
+      updatePickerCount();
+    };
+  });
+  const allBtn = document.getElementById("pickAllBtn");
+  if (allBtn) allBtn.onclick = () => {
+    lastPickerResultIds.forEach(id => bookPicker.selected.add(id));
+    list.querySelectorAll("[data-pickitem]").forEach(chk => chk.checked = true);
+    updatePickerCount();
+  };
+  const noneBtn = document.getElementById("pickNoneBtn");
+  if (noneBtn) noneBtn.onclick = () => {
+    lastPickerResultIds.forEach(id => bookPicker.selected.delete(id));
+    list.querySelectorAll("[data-pickitem]").forEach(chk => chk.checked = false);
+    updatePickerCount();
+  };
+  updatePickerCount();
+}
+
+function updatePickerCount(){
+  const el = document.getElementById("pickerCount");
+  if (el) el.textContent = "선택된 항목: " + bookPicker.selected.size + "개";
+}
+
+async function addSelectedToSection(sectionId, sections){
+  if (!bookPicker.selected.size) return toast("먼저 기록을 선택해주세요.");
+  const section = sections.find(s => s.id === sectionId);
+  let count = (section?.book_section_records||[]).length;
+  const rows = [...bookPicker.selected].map(recordId => ({ section_id: sectionId, record_id: recordId, sort_order: count++ }));
+  const { error } = await sb.from("book_section_records").insert(rows);
+  if (error) return toast("추가 실패: " + error.message);
+  toast(rows.length + "개를 추가했습니다.");
+  bookPicker = { sectionId: null, selected: new Set() };
+  renderBookTab();
+}
+
+function renderSectionEditor(section, savedRecords){
+  const isPickerOpen = bookPicker.sectionId === section.id;
+  const isEditingTitle = editingSectionId === section.id;
+  return `
+    <div class="panel">
+      ${isEditingTitle ? `
+        <input id="editSectionTitle-${section.id}" value="${section.title.replace(/"/g,'&quot;')}">
+        <div class="row">
+          <button class="btn small" data-savesection="${section.id}">저장</button>
+          <button class="btn ghost small" data-editsection="${section.id}">취소</button>
+        </div>
+      ` : `
+        <div class="cardhead">
+          <span style="font-weight:600">${section.title}</span>
+          <div style="white-space:nowrap">
+            <button class="actionlink" data-editsection="${section.id}">[변경]</button>
+            <button class="actionlink danger" data-delsection="${section.id}">[삭제]</button>
+          </div>
+        </div>
+      `}
+      ${(section.book_section_records||[]).sort((a,b)=>a.sort_order-b.sort_order).map(sr => `
+        <div class="record cardhead">
+          <div>${sr.records?.title || "(제목 없음)"}</div>
+          <button class="actionlink danger" data-removerecord="${section.id}|${sr.record_id}">[빼기]</button>
+        </div>
+      `).join("") || `<div class="muted" style="margin-top:8px">아직 배정된 기록이 없습니다.</div>`}
+
+      ${isPickerOpen ? `
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line)">
+          <label>종류</label>
+          <select id="pfKind">
+            <option value="">전체</option>
+            <option value="moment">오늘의 멈춤</option>
+            <option value="record">기록하기</option>
+          </select>
+          <label>폴더</label>
+          <select id="pfFolder">
+            <option value="">전체</option>
+            ${state.folders.map(f=>`<option value="${f.id}">${f.name}</option>`).join("")}
+          </select>
+          <label>소중한 존재</label>
+          <select id="pfPerson">
+            <option value="">전체</option>
+            ${state.relationships.map(r=>`<option value="${r.id}">${r.person_name}</option>`).join("")}
+          </select>
+          <div class="row" style="margin-top:0">
+            <div style="flex:1;min-width:120px">
+              <label>시작일</label>
+              <input type="date" id="pfFrom">
+            </div>
+            <div style="flex:1;min-width:120px">
+              <label>종료일</label>
+              <input type="date" id="pfTo">
+            </div>
+          </div>
+          <label>키워드 (제목/내용)</label>
+          <input id="pfKeyword" placeholder="검색어">
+          <div class="row">
+            <button class="btn small" id="pickerSearch">검색</button>
+            <button class="btn ghost small" data-closepicker="1">닫기</button>
+          </div>
+
+          <div id="pickerResults" style="margin-top:14px"></div>
+          <div class="row" style="align-items:center;justify-content:space-between">
+            <span class="muted" id="pickerCount">선택된 항목: 0개</span>
+            <button class="btn small" data-addselected="${section.id}">이 장에 추가</button>
+          </div>
+        </div>
+      ` : `
+        <button class="btn ghost small" data-openpicker="${section.id}" style="margin-top:12px">+ 기록 추가</button>
+      `}
+    </div>
+  `;
+}
+function renderSettings(){
+  document.getElementById("app").innerHTML = `
+    <div class="settingsub">
+      <button data-stab="profile" class="${settingsTab==='profile'?'active':''}">개인 프로필</button>
+      <button data-stab="people" class="${settingsTab==='people'?'active':''}">소중한 존재</button>
+      <button data-stab="folders" class="${settingsTab==='folders'?'active':''}">글모음 관리</button>
+      <button data-stab="quotes" class="${settingsTab==='quotes'?'active':''}">명언 관리</button>
+      <button data-stab="book" class="${settingsTab==='book'?'active':''}">책 만들기</button>
+      <button data-stab="system" class="${settingsTab==='system'?'active':''}">시스템설정</button>
+      <button data-stab="info" class="${settingsTab==='info'?'active':''}">시스템정보</button>
+    </div>
+    <div id="settingsBody"></div>
+  `;
+  document.querySelectorAll("[data-stab]").forEach(b=>{
+    b.onclick = () => { settingsTab = b.dataset.stab; renderSettings(); };
+  });
+  if (settingsTab === "profile") renderProfileTab();
+  if (settingsTab === "people") renderPeopleTab();
+  if (settingsTab === "folders") renderFoldersTab();
+  if (settingsTab === "quotes") renderQuotesTab();
+  if (settingsTab === "book") renderBookTab();
+  if (settingsTab === "system") renderSystemTab();
+  if (settingsTab === "info") renderInfoTab();
+}
+
+async function renderFoldersTab(){
+  await loadFolders();
+  document.getElementById("settingsBody").innerHTML = `
+    <div class="panel">
+      <label>새 글모음 이름</label>
+      <input id="newFolderName" placeholder="예: 여행, 감사일기">
+      <button class="btn" id="newFolderAdd" style="margin-top:12px">추가</button>
+    </div>
+    <div class="panel">
+      ${state.folders.length ? state.folders.map(f=>`
+        <div class="record cardhead">
+          <input id="folderName-${f.id}" value="${f.name.replace(/"/g,'&quot;')}" style="flex:1;margin-right:8px">
+          <div style="white-space:nowrap">
+            <button class="actionlink" data-savefolder="${f.id}">[저장]</button>
+            <button class="actionlink danger" data-delfolder="${f.id}">[삭제]</button>
+          </div>
+        </div>
+      `).join("") : `<div class="empty">등록된 글모음이 없습니다.</div>`}
+    </div>
+  `;
+  document.getElementById("newFolderAdd").onclick = async () => {
+    const name = document.getElementById("newFolderName").value.trim();
+    if (!name) return toast("이름을 입력해주세요.");
+    const { error } = await sb.from("folders").insert({ owner_id: state.user.id, name, is_default: false });
+    if (error) return toast("추가 실패: " + error.message);
+    renderFoldersTab();
+  };
+  document.querySelectorAll("[data-savefolder]").forEach(btn=>{
+    btn.onclick = async () => {
+      const name = document.getElementById("folderName-" + btn.dataset.savefolder).value.trim();
+      if (!name) return toast("이름을 입력해주세요.");
+      const { error } = await sb.from("folders").update({ name }).eq("id", btn.dataset.savefolder);
+      if (error) return toast("수정 실패: " + error.message);
+      toast("수정했습니다.");
+      renderFoldersTab();
+    };
+  });
+  document.querySelectorAll("[data-delfolder]").forEach(btn=>{
+    btn.onclick = async () => {
+      if (!confirm("이 글모음을 삭제하시겠습니까? 기록 자체는 삭제되지 않고, 연결만 해제됩니다.")) return;
+      const { error } = await sb.from("folders").delete().eq("id", btn.dataset.delfolder);
+      if (error) return toast("삭제 실패: " + error.message);
+      toast("삭제했습니다.");
+      renderFoldersTab();
+    };
+  });
+}
+
+function renderProfileTab(){
+  const isGuest = state.user.is_anonymous ?? (state.user.app_metadata?.provider === "anonymous");
+  document.getElementById("settingsBody").innerHTML = `
+    <div class="panel">
+      <div class="muted">${isGuest ? "게스트 계정으로 사용 중입니다." : ("이메일: " + state.user.email)}</div>
+      ${isGuest ? `<p style="color:var(--danger);font-size:13px;margin-top:8px">주의: 게스트 상태에서 로그아웃하면 지금까지 쓴 기록을 다시 볼 수 없습니다. 계속 쓰시려면 아래에서 먼저 이메일로 전환해주세요.</p>` : ""}
+      ${isGuest ? `
+        <label>이메일로 전환 (지금까지의 기록이 그대로 유지됩니다)</label>
+        <input id="linkEmail" type="email" placeholder="you@example.com">
+        <label>비밀번호</label>
+        <input id="linkPw" type="password">
+        <button class="btn" id="linkBtn" style="margin-top:10px">계정 연결하기</button>
+      ` : ""}
+      <button class="btn ghost" id="logoutBtn" style="margin-top:16px">로그아웃</button>
+    </div>
+  `;
+  document.getElementById("logoutBtn").onclick = signOut;
+  if (isGuest){
+    document.getElementById("linkBtn").onclick = async () => {
+      const email = document.getElementById("linkEmail").value;
+      const password = document.getElementById("linkPw").value;
+      const { error } = await sb.auth.updateUser({ email, password });
+      if (error) return toast("전환 실패: " + error.message);
+      toast("이메일 확인 후 정식 계정으로 전환됩니다.");
+    };
+  }
+}
+
+function renderSystemTab(){
+  const p = state.profile || {};
+  document.getElementById("settingsBody").innerHTML = `
+    <div class="panel">
+      <label>화면 색상</label>
+      <div class="row" style="margin-top:0">
+        ${Object.entries(THEMES).map(([key,t])=>`
+          <span title="${t.label}" data-theme="${key}" class="swatch ${p.theme===key?'selected':''}" style="background:${t.bg};border-color:${t.line}"></span>
+        `).join("")}
+      </div>
+      <label>글자 크기</label>
+      <select id="fontSizeSel">
+        <option value="sm" ${p.font_size==='sm'?'selected':''}>작게</option>
+        <option value="md" ${(!p.font_size||p.font_size==='md')?'selected':''}>보통</option>
+        <option value="lg" ${p.font_size==='lg'?'selected':''}>크게</option>
+      </select>
+      <label>글자색 (선택, 테마 기본값을 덮어씀)</label>
+      <div class="row" style="margin-top:0;align-items:center">
+        <input id="textColorPick" type="color" style="width:60px;padding:2px" value="${p.text_color || THEMES[p.theme||'warm'].text}">
+        <button class="btn ghost small" id="textColorReset">기본값으로</button>
+      </div>
+      <label>자동저장 간격 — 오늘의 멈춤 / 기록하기 작성 중 몇 초마다 임시저장할지</label>
+      <select id="autosaveSel">
+        <option value="3" ${p.autosave_interval_sec===3?'selected':''}>3초</option>
+        <option value="5" ${(!p.autosave_interval_sec||p.autosave_interval_sec===5)?'selected':''}>5초 (기본)</option>
+        <option value="10" ${p.autosave_interval_sec===10?'selected':''}>10초</option>
+        <option value="30" ${p.autosave_interval_sec===30?'selected':''}>30초</option>
+      </select>
+      <label>기록보기 — 페이지당 기록 수</label>
+      <select id="perPageSel">
+        <option value="5" ${p.records_per_page===5?'selected':''}>5개</option>
+        <option value="10" ${(!p.records_per_page||p.records_per_page===10)?'selected':''}>10개 (기본)</option>
+        <option value="20" ${p.records_per_page===20?'selected':''}>20개</option>
+        <option value="30" ${p.records_per_page===30?'selected':''}>30개</option>
+      </select>
+    </div>
+    <div class="panel">
+      <label>메뉴 아이콘 (이모지 하나씩 입력)</label>
+      <div class="row" style="margin-top:0">
+        <div style="flex:1;min-width:90px">
+          <label style="margin:0 0 4px">오늘의 멈춤</label>
+          <input id="iconMoment" value="${(p.nav_icons&&p.nav_icons.moment)||'🌿'}" maxlength="4">
+        </div>
+        <div style="flex:1;min-width:90px">
+          <label style="margin:0 0 4px">기록하기</label>
+          <input id="iconWrite" value="${(p.nav_icons&&p.nav_icons.write)||'✍️'}" maxlength="4">
+        </div>
+        <div style="flex:1;min-width:90px">
+          <label style="margin:0 0 4px">기록보기</label>
+          <input id="iconRecords" value="${(p.nav_icons&&p.nav_icons.records)||'📖'}" maxlength="4">
+        </div>
+      </div>
+      <button class="btn small" id="saveIcons" style="margin-top:12px">아이콘 저장</button>
+    </div>
+    <div class="panel">
+      <label>배경화면 — 공개 이미지 링크</label>
+      <input id="bgUrl" placeholder="https://..." value="${p.background_image_url && !p.background_image_path ? p.background_image_url : ""}">
+      <label>배경화면 — 사진 업로드</label>
+      <input id="bgFile" type="file" accept="image/*">
+      <div class="row">
+        <button class="btn" id="bgApply">배경 적용</button>
+        <button class="btn ghost" id="bgClear">배경 제거</button>
+      </div>
+    </div>
+  `;
+
+  document.querySelectorAll("[data-theme]").forEach(el=>{
+    el.onclick = async () => {
+      const theme = el.dataset.theme;
+      const { error } = await sb.from("profiles").update({ theme }).eq("id", state.user.id);
+      if (error) return toast("적용 실패: " + error.message);
+      state.profile.theme = theme;
+      applyTheme(theme, state.profile.text_color);
+      renderSystemTab();
+    };
+  });
+
+  document.getElementById("fontSizeSel").onchange = async (e) => {
+    const font_size = e.target.value;
+    const { error } = await sb.from("profiles").update({ font_size }).eq("id", state.user.id);
+    if (error) return toast("적용 실패: " + error.message);
+    state.profile.font_size = font_size;
+    applyFontSize(font_size);
+  };
+
+  document.getElementById("autosaveSel").onchange = async (e) => {
+    const autosave_interval_sec = parseInt(e.target.value, 10);
+    const { error } = await sb.from("profiles").update({ autosave_interval_sec }).eq("id", state.user.id);
+    if (error) return toast("적용 실패: " + error.message);
+    state.profile.autosave_interval_sec = autosave_interval_sec;
+    toast("자동저장 간격을 " + autosave_interval_sec + "초로 설정했습니다.");
+  };
+
+  document.getElementById("perPageSel").onchange = async (e) => {
+    const records_per_page = parseInt(e.target.value, 10);
+    const { error } = await sb.from("profiles").update({ records_per_page }).eq("id", state.user.id);
+    if (error) return toast("적용 실패: " + error.message);
+    state.profile.records_per_page = records_per_page;
+    currentPage = 1;
+    toast("페이지당 " + records_per_page + "개로 설정했습니다.");
+  };
+
+  document.getElementById("saveIcons").onclick = async () => {
+    const nav_icons = {
+      moment: document.getElementById("iconMoment").value.trim() || "🌿",
+      write: document.getElementById("iconWrite").value.trim() || "✍️",
+      records: document.getElementById("iconRecords").value.trim() || "📖",
+    };
+    const { error } = await sb.from("profiles").update({ nav_icons }).eq("id", state.user.id);
+    if (error) return toast("적용 실패: " + error.message);
+    state.profile.nav_icons = nav_icons;
+    applyNavIcons(nav_icons);
+    toast("아이콘을 저장했습니다.");
+  };
+
+  document.getElementById("textColorPick").onchange = async (e) => {
+    const text_color = e.target.value;
+    const { error } = await sb.from("profiles").update({ text_color }).eq("id", state.user.id);
+    if (error) return toast("적용 실패: " + error.message);
+    state.profile.text_color = text_color;
+    applyTheme(state.profile.theme, text_color);
+  };
+  document.getElementById("textColorReset").onclick = async () => {
+    const { error } = await sb.from("profiles").update({ text_color: null }).eq("id", state.user.id);
+    if (error) return toast("초기화 실패: " + error.message);
+    state.profile.text_color = null;
+    applyTheme(state.profile.theme, null);
+    renderSystemTab();
+  };
+
+  document.getElementById("bgApply").onclick = async () => {
+    const url = document.getElementById("bgUrl").value.trim();
+    const file = document.getElementById("bgFile").files[0];
+    if (file){
+      const path = `${state.user.id}/background/${file.name}`;
+      const { error: upErr } = await sb.storage.from("media").upload(path, file, { upsert: true });
+      if (upErr) return toast("업로드 실패: " + upErr.message);
+      const { error } = await sb.from("profiles").update({ background_image_path: path, background_image_url: null }).eq("id", state.user.id);
+      if (error) return toast("적용 실패: " + error.message);
+      state.profile.background_image_path = path;
+      state.profile.background_image_url = null;
+    } else if (url){
+      const { error } = await sb.from("profiles").update({ background_image_url: url, background_image_path: null }).eq("id", state.user.id);
+      if (error) return toast("적용 실패: " + error.message);
+      state.profile.background_image_url = url;
+      state.profile.background_image_path = null;
+    } else {
+      return toast("링크를 입력하거나 파일을 선택해주세요.");
+    }
+    await applyProfileSettings(state.profile);
+    toast("배경화면을 적용했습니다.");
+  };
+
+  document.getElementById("bgClear").onclick = async () => {
+    const { error } = await sb.from("profiles").update({ background_image_url: null, background_image_path: null }).eq("id", state.user.id);
+    if (error) return toast("제거 실패: " + error.message);
+    state.profile.background_image_url = null;
+    state.profile.background_image_path = null;
+    applyBackground(null);
+    toast("배경화면을 제거했습니다.");
+    renderSystemTab();
+  };
+}
+
+// ---------- 명언 관리 (설정 하위 탭) ----------
+const QUOTE_AI_PROMPT = `아래 조건에 맞는 한국어 명언 50개를 CSV로 만들어줘.
+- 형식: text,author (첫 줄은 헤더 그대로 포함)
+- text 안에 쉼표가 있으면 큰따옴표로 감싸기
+- 저자를 모르면 "작자 미상"으로 표기
+- 저작권이 소멸된(오래된 속담, 고전, 유명인의 짧은 어록) 문장 위주로
+- 한 줄에 하나씩, 총 50줄 (헤더 제외)`;
+
+async function loadQuotes(){
+  const { data, error } = await sb.from("quotes").select("*").eq("owner_id", state.user.id).order("created_at", { ascending: false });
+  if (error){ toast("불러오기 실패: " + error.message); return; }
+  state.quotes = data || [];
+}
+
+function parseQuoteCsv(text){
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  const rows = [];
+  for (const line of lines){
+    // 간단한 CSV 파서: 큰따옴표로 감싼 콤마를 보존
+    const matches = line.match(/(".*?"|[^,]+)(?=,|$)/g) || [];
+    const cols = matches.map(c => c.trim().replace(/^"|"$/g, "").replace(/""/g, '"'));
+    if (cols[0]?.toLowerCase() === "text" && (cols[1]||"").toLowerCase() === "author") continue; // 헤더 skip
+    if (cols[0]) rows.push({ text: cols[0], author: cols[1] || null });
+  }
+  return rows;
+}
+
+let openQuoteId = null;
+
+async function renderQuotesTab(){
+  await loadQuotes();
+  document.getElementById("settingsBody").innerHTML = `
+    <div class="panel">
+      <p class="muted">외부 명언 서비스 대신, 원하는 AI로 직접 만든 명언집을 CSV로 업로드해서 씁니다.</p>
+      <div class="row" style="margin-top:0">
+        <button class="btn ghost small" id="downloadTemplate">업로드 양식 다운로드</button>
+        <button class="btn ghost small" id="copyPrompt">AI 프롬프트 복사</button>
+        <button class="btn ghost small" id="deleteAllQuotes" style="color:var(--danger)">전체 삭제</button>
+      </div>
+      <label>CSV 파일 업로드 (text,author)</label>
+      <input id="quoteFile" type="file" accept=".csv,text/csv">
+      <button class="btn" id="quoteUpload" style="margin-top:10px">업로드</button>
+    </div>
+    <div class="panel">
+      <div class="muted">총 ${state.quotes.length}개 등록됨</div>
+      ${state.quotes.map(q => renderQuoteItem(q)).join("") || `<div class="empty">아직 업로드된 명언이 없습니다.</div>`}
+    </div>
+  `;
+
+  document.getElementById("downloadTemplate").onclick = () => {
+    const blob = new Blob(["text,author\n\"오늘 걷지 않으면 내일은 뛰어야 한다\",작자 미상\n"], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "머물다_명언업로드양식.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  document.getElementById("copyPrompt").onclick = async () => {
+    await navigator.clipboard?.writeText(QUOTE_AI_PROMPT).catch(()=>{});
+    toast("프롬프트를 클립보드에 복사했습니다.");
+  };
+
+  document.getElementById("deleteAllQuotes").onclick = async () => {
+    if (!state.quotes.length) return toast("삭제할 명언이 없습니다.");
+    if (!confirm(`등록된 명언 ${state.quotes.length}개를 모두 삭제하시겠습니까? 되돌릴 수 없습니다.`)) return;
+    const { error } = await sb.from("quotes").delete().eq("owner_id", state.user.id);
+    if (error) return toast("삭제 실패: " + error.message);
+    toast("전체 삭제했습니다.");
+    renderQuotesTab();
+  };
+
+  document.getElementById("quoteUpload").onclick = async () => {
+    const file = document.getElementById("quoteFile").files[0];
+    if (!file) return toast("파일을 선택해주세요.");
+    const text = await file.text();
+    const rows = parseQuoteCsv(text);
+    if (!rows.length) return toast("업로드할 내용이 없습니다. 양식을 확인해주세요.");
+    const { error } = await sb.from("quotes").insert(rows.map(r => ({ owner_id: state.user.id, text: r.text, author: r.author })));
+    if (error) return toast("업로드 실패: " + error.message);
+    toast(rows.length + "개 업로드했습니다.");
+    renderQuotesTab();
+  };
+
+  document.querySelectorAll("[data-editquote]").forEach(btn=>{
+    btn.onclick = () => { openQuoteId = (openQuoteId === btn.dataset.editquote) ? null : btn.dataset.editquote; renderQuotesTab(); };
+  });
+  document.querySelectorAll("[data-savequote]").forEach(btn=>{
+    btn.onclick = async () => {
+      const text = document.getElementById("editQuoteText-" + btn.dataset.savequote).value.trim();
+      const author = document.getElementById("editQuoteAuthor-" + btn.dataset.savequote).value.trim() || null;
+      if (!text) return toast("내용을 입력해주세요.");
+      const { error } = await sb.from("quotes").update({ text, author }).eq("id", btn.dataset.savequote);
+      if (error) return toast("수정 실패: " + error.message);
+      toast("수정했습니다.");
+      openQuoteId = null;
+      renderQuotesTab();
+    };
+  });
+  document.querySelectorAll("[data-delquote]").forEach(btn=>{
+    btn.onclick = async () => {
+      if (!confirm("이 명언을 삭제하시겠습니까?")) return;
+      const { error } = await sb.from("quotes").delete().eq("id", btn.dataset.delquote);
+      if (error) return toast("삭제 실패: " + error.message);
+      renderQuotesTab();
+    };
+  });
+}
+
+function renderQuoteItem(q){
+  if (openQuoteId === q.id){
+    return `
+      <div class="record">
+        <label>내용</label>
+        <textarea id="editQuoteText-${q.id}" style="min-height:60px">${q.text}</textarea>
+        <label>저자</label>
+        <input id="editQuoteAuthor-${q.id}" value="${(q.author||"").replace(/"/g,'&quot;')}">
+        <div class="row">
+          <button class="btn small" data-savequote="${q.id}">저장</button>
+          <button class="btn ghost small" data-editquote="${q.id}">취소</button>
+          <button class="actionlink danger" data-delquote="${q.id}">[삭제]</button>
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <div class="record">
+      <div class="cardhead">
+        <div>
+          <div>${q.text}</div>
+          <div class="muted" style="margin-top:2px">— ${q.author || "작자 미상"}</div>
+        </div>
+        <div style="white-space:nowrap">
+          <button class="actionlink" data-editquote="${q.id}">[변경]</button>
+          <button class="actionlink danger" data-delquote="${q.id}">[삭제]</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderInfoTab(){
+  document.getElementById("settingsBody").innerHTML = `
+    <div class="panel">
+      <div class="record">
+        <div class="muted">앱 이름</div>
+        <div style="font-weight:600">머물다</div>
+      </div>
+      <div class="record">
+        <div class="muted">기획 버전</div>
+        <div style="font-weight:600">v0.6</div>
+      </div>
+      <div class="record">
+        <div class="muted">데이터베이스 스키마</div>
+        <div style="font-weight:600">schema_v0_6</div>
+      </div>
+      <div class="record">
+        <div class="muted">진행 단계</div>
+        <div style="font-weight:600">프로토타입 (로컬 파일, 웹 배포 전)</div>
+      </div>
+    </div>
+  `;
+}
+
+boot();
+</script>
+</body>
+</html>
