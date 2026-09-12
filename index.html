@@ -1396,10 +1396,10 @@ async function renderBookDetail(){
     document.getElementById("editBookTitleBtn").onclick = () => { editingBookTitle = true; renderBookTab(); };
   }
   document.querySelectorAll("[data-sectionmenu]").forEach(btn=>{
-    btn.onclick = () => { openSectionMenu = (openSectionMenu === btn.dataset.sectionmenu) ? null : btn.dataset.sectionmenu; renderBookTab(); };
+    btn.onclick = () => { openSectionMenu = (openSectionMenu === btn.dataset.sectionmenu) ? null : btn.dataset.sectionmenu; openRecMenu = null; renderBookTab(); };
   });
   document.querySelectorAll("[data-recmenu]").forEach(btn=>{
-    btn.onclick = () => { openRecMenu = (openRecMenu === btn.dataset.recmenu) ? null : btn.dataset.recmenu; renderBookTab(); };
+    btn.onclick = () => { openRecMenu = (openRecMenu === btn.dataset.recmenu) ? null : btn.dataset.recmenu; openSectionMenu = null; renderBookTab(); };
   });
   document.querySelectorAll("[data-removerecord]").forEach(btn=>{
     btn.onclick = async () => {
