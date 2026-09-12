@@ -1010,6 +1010,10 @@ async function deletePerson(id){
 // ---------- 책 만들기 ----------
 let currentBookId = null;
 let bookPicker = { sectionId: null, selected: new Set() };
+let openBookMenu = null;
+let pdfSettingsOpen = false;
+let openSectionMenu = null;
+let openRecMenu = null;
 let lastPickerResultIds = [];
 let editingBookTitle = false;
 let editingSectionId = null;
@@ -1243,7 +1247,14 @@ async function renderBookList(){
             <div style="font-weight:600;cursor:pointer" data-openbook="${b.id}">${b.title}</div>
             <div class="muted">${b.status === "draft" ? "작업 중" : b.status}</div>
           </div>
-          <button class="actionlink danger" data-delbook="${b.id}">[삭제]</button>
+          <div style="position:relative">
+            <button class="iconbtn" data-bookmenu="${b.id}">⋮</button>
+            ${openBookMenu === b.id ? `
+              <div style="position:absolute;right:0;top:28px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px;box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:5">
+                <button class="actionlink danger" data-delbook="${b.id}" style="display:block;width:100%;text-align:left">삭제</button>
+              </div>
+            ` : ""}
+          </div>
         </div>
       `).join("") : `<div class="empty">아직 만든 책이 없습니다. 위에서 새로 만들어보세요.</div>`}
     </div>
@@ -1260,12 +1271,16 @@ async function renderBookList(){
   document.querySelectorAll("[data-openbook]").forEach(el=>{
     el.onclick = () => { currentBookId = el.dataset.openbook; bookPicker = { sectionId: null, selected: new Set() }; renderBookTab(); };
   });
+  document.querySelectorAll("[data-bookmenu]").forEach(btn=>{
+    btn.onclick = () => { openBookMenu = (openBookMenu === btn.dataset.bookmenu) ? null : btn.dataset.bookmenu; renderBookList(); };
+  });
   document.querySelectorAll("[data-delbook]").forEach(btn=>{
     btn.onclick = async () => {
       if (!confirm("이 책을 삭제하시겠습니까? 안의 장 구성도 함께 삭제됩니다 (원본 기록은 삭제되지 않습니다).")) return;
       const { error } = await sb.from("book_projects").delete().eq("id", btn.dataset.delbook);
       if (error) return toast("삭제 실패: " + error.message);
       toast("삭제했습니다.");
+      openBookMenu = null;
       renderBookList();
     };
   });
@@ -1290,38 +1305,44 @@ async function renderBookDetail(){
         <input id="editBookTitle" value="${book.title.replace(/"/g,'&quot;')}">
         <div class="row"><button class="btn small" id="saveBookTitle">저장</button><button class="btn ghost small" id="cancelBookTitle">취소</button></div>
       ` : `
-        <div class="cardhead"><span style="font-weight:700;font-size:18px">${book.title}</span><button class="actionlink" id="editBookTitleBtn">[변경]</button></div>
+        <div class="cardhead"><span style="font-weight:700;font-size:18px">${book.title}</span><button class="actionlink" id="editBookTitleBtn">변경</button></div>
       `}
       <label>새 장(섹션) 추가</label>
       <input id="newSectionTitle" placeholder="예: 1부. 시작">
       <button class="btn small" id="newSectionAdd" style="margin-top:10px">장 추가</button>
     </div>
     <div class="panel">
-      <div style="font-weight:600">PDF 설정</div>
-      <label>배경 이미지 (모든 페이지에 적용, 선택)</label>
-      ${book.background_image_path ? `
-        <div class="muted" id="bgBookPreviewWrap">현재 배경이 설정되어 있습니다.
-          <button class="actionlink danger" id="bgBookRemove">[제거]</button>
-        </div>
-      ` : `<div class="muted">설정된 배경이 없습니다.</div>`}
-      <label class="dropzone" for="bgBookFile" style="margin-top:8px">
-        <div style="font-size:20px">🖼️</div>
-        <div style="font-size:12px">${book.background_image_path ? "새 이미지로 교체" : "배경 이미지 업로드"}</div>
-        <div class="muted" style="font-size:11px" id="bgBookFileName">클릭하여 선택</div>
-        <input id="bgBookFile" type="file" accept="image/*">
-      </label>
-      <button class="btn small" id="bgBookSave" style="margin-top:8px">배경 저장</button>
-      <label style="margin-top:16px">여백 크기</label>
-      <select id="marginSel">
-        <option value="narrow" ${book.margin_size==='narrow'?'selected':''}>좁게</option>
-        <option value="normal" ${(!book.margin_size||book.margin_size==='normal')?'selected':''}>보통</option>
-        <option value="wide" ${book.margin_size==='wide'?'selected':''}>넓게</option>
-      </select>
+      <button class="btn ghost small" id="pdfSettingsToggle">PDF 설정 ${pdfSettingsOpen ? "▲" : "▼"}</button>
+      ${pdfSettingsOpen ? `
+      <div style="margin-top:12px">
+        <label>배경 이미지 (모든 페이지에 적용, 선택)</label>
+        ${book.background_image_path ? `
+          <div class="muted" id="bgBookPreviewWrap">현재 배경이 설정되어 있습니다.
+            <button class="actionlink danger" id="bgBookRemove">제거</button>
+          </div>
+        ` : `<div class="muted">설정된 배경이 없습니다.</div>`}
+        <label class="dropzone" for="bgBookFile" style="margin-top:8px">
+          <div style="font-size:20px">🖼️</div>
+          <div style="font-size:12px">${book.background_image_path ? "새 이미지로 교체" : "배경 이미지 업로드"}</div>
+          <div class="muted" style="font-size:11px" id="bgBookFileName">클릭하여 선택</div>
+          <input id="bgBookFile" type="file" accept="image/*">
+        </label>
+        <button class="btn small" id="bgBookSave" style="margin-top:8px">배경 저장</button>
+        <label style="margin-top:16px">여백 크기</label>
+        <select id="marginSel">
+          <option value="narrow" ${book.margin_size==='narrow'?'selected':''}>좁게</option>
+          <option value="normal" ${(!book.margin_size||book.margin_size==='normal')?'selected':''}>보통</option>
+          <option value="wide" ${book.margin_size==='wide'?'selected':''}>넓게</option>
+        </select>
+      </div>
+      ` : ""}
     </div>
     ${sections.map(s => renderSectionEditor(s, savedRecords)).join("")}
   `;
   document.getElementById("backList").onclick = () => { currentBookId = null; bookPicker = { sectionId: null, selected: new Set() }; renderBookTab(); };
   document.getElementById("toPreview").onclick = () => generateBookPdf(book, sections);
+  document.getElementById("pdfSettingsToggle").onclick = () => { pdfSettingsOpen = !pdfSettingsOpen; renderBookTab(); };
+  if (pdfSettingsOpen){
   document.getElementById("bgBookFile").addEventListener("change", (e) => {
     const f = e.target.files[0];
     document.getElementById("bgBookFileName").textContent = f ? f.name : "클릭하여 선택";
@@ -1353,6 +1374,7 @@ async function renderBookDetail(){
     if (error) return toast("적용 실패: " + error.message);
     toast("여백 설정을 저장했습니다.");
   };
+  }
   document.getElementById("newSectionAdd").onclick = async () => {
     const title = document.getElementById("newSectionTitle").value.trim();
     if (!title) return toast("장 이름을 입력해주세요.");
@@ -1373,16 +1395,23 @@ async function renderBookDetail(){
   } else {
     document.getElementById("editBookTitleBtn").onclick = () => { editingBookTitle = true; renderBookTab(); };
   }
+  document.querySelectorAll("[data-sectionmenu]").forEach(btn=>{
+    btn.onclick = () => { openSectionMenu = (openSectionMenu === btn.dataset.sectionmenu) ? null : btn.dataset.sectionmenu; renderBookTab(); };
+  });
+  document.querySelectorAll("[data-recmenu]").forEach(btn=>{
+    btn.onclick = () => { openRecMenu = (openRecMenu === btn.dataset.recmenu) ? null : btn.dataset.recmenu; renderBookTab(); };
+  });
   document.querySelectorAll("[data-removerecord]").forEach(btn=>{
     btn.onclick = async () => {
       const [sectionId, recordId] = btn.dataset.removerecord.split("|");
       const { error } = await sb.from("book_section_records").delete().eq("section_id", sectionId).eq("record_id", recordId);
       if (error) return toast("제거 실패: " + error.message);
+      openRecMenu = null;
       renderBookTab();
     };
   });
   document.querySelectorAll("[data-editsection]").forEach(btn=>{
-    btn.onclick = () => { editingSectionId = (editingSectionId === btn.dataset.editsection) ? null : btn.dataset.editsection; renderBookTab(); };
+    btn.onclick = () => { editingSectionId = (editingSectionId === btn.dataset.editsection) ? null : btn.dataset.editsection; openSectionMenu = null; renderBookTab(); };
   });
   document.querySelectorAll("[data-savesection]").forEach(btn=>{
     btn.onclick = async () => {
@@ -1400,6 +1429,7 @@ async function renderBookDetail(){
       const { error } = await sb.from("book_sections").delete().eq("id", btn.dataset.delsection);
       if (error) return toast("삭제 실패: " + error.message);
       toast("삭제했습니다.");
+      openSectionMenu = null;
       renderBookTab();
     };
   });
@@ -1524,16 +1554,28 @@ function renderSectionEditor(section, savedRecords){
       ` : `
         <div class="cardhead">
           <span style="font-weight:600">${section.title}</span>
-          <div style="white-space:nowrap">
-            <button class="actionlink" data-editsection="${section.id}">[변경]</button>
-            <button class="actionlink danger" data-delsection="${section.id}">[삭제]</button>
+          <div style="position:relative">
+            <button class="iconbtn" data-sectionmenu="${section.id}">⋮</button>
+            ${openSectionMenu === section.id ? `
+              <div style="position:absolute;right:0;top:28px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px;box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:5;white-space:nowrap">
+                <button class="actionlink" data-editsection="${section.id}" style="display:block;width:100%;text-align:left">변경</button>
+                <button class="actionlink danger" data-delsection="${section.id}" style="display:block;width:100%;text-align:left">삭제</button>
+              </div>
+            ` : ""}
           </div>
         </div>
       `}
       ${(section.book_section_records||[]).sort((a,b)=>a.sort_order-b.sort_order).map(sr => `
         <div class="record cardhead">
           <div>${sr.records?.title || "(제목 없음)"}</div>
-          <button class="actionlink danger" data-removerecord="${section.id}|${sr.record_id}">[빼기]</button>
+          <div style="position:relative">
+            <button class="iconbtn" data-recmenu="${section.id}|${sr.record_id}">⋮</button>
+            ${openRecMenu === (section.id+"|"+sr.record_id) ? `
+              <div style="position:absolute;right:0;top:28px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px;box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:5;white-space:nowrap">
+                <button class="actionlink danger" data-removerecord="${section.id}|${sr.record_id}" style="display:block;width:100%;text-align:left">제거</button>
+              </div>
+            ` : ""}
+          </div>
         </div>
       `).join("") || `<div class="muted" style="margin-top:8px">아직 배정된 기록이 없습니다.</div>`}
 
@@ -1584,16 +1626,22 @@ function renderSectionEditor(section, savedRecords){
     </div>
   `;
 }
+const SETTINGS_TAB_LABELS = {
+  profile: "개인 프로필", people: "소중한 존재", folders: "글모음 관리",
+  quotes: "명언 관리", book: "책 만들기", system: "시스템설정", info: "시스템정보",
+};
+
+function tabLabel(key){
+  const icons = (state.profile && state.profile.nav_icons) || {};
+  return icons[key] ? icons[key] : SETTINGS_TAB_LABELS[key];
+}
+
 function renderSettings(){
   document.getElementById("app").innerHTML = `
     <div class="settingsub">
-      <button data-stab="profile" class="${settingsTab==='profile'?'active':''}">개인 프로필</button>
-      <button data-stab="people" class="${settingsTab==='people'?'active':''}">소중한 존재</button>
-      <button data-stab="folders" class="${settingsTab==='folders'?'active':''}">글모음 관리</button>
-      <button data-stab="quotes" class="${settingsTab==='quotes'?'active':''}">명언 관리</button>
-      <button data-stab="book" class="${settingsTab==='book'?'active':''}">책 만들기</button>
-      <button data-stab="system" class="${settingsTab==='system'?'active':''}">시스템설정</button>
-      <button data-stab="info" class="${settingsTab==='info'?'active':''}">시스템정보</button>
+      ${Object.keys(SETTINGS_TAB_LABELS).map(key => `
+        <button data-stab="${key}" class="${settingsTab===key?'active':''}">${tabLabel(key)}</button>
+      `).join("")}
     </div>
     <div id="settingsBody"></div>
   `;
@@ -1722,7 +1770,7 @@ function renderSystemTab(){
       </select>
     </div>
     <div class="panel">
-      <label>메뉴 아이콘 (이모지 하나씩 입력)</label>
+      <label>메뉴 아이콘 (이모지 입력, 비워두면 글자로 표시)</label>
       <div class="row" style="margin-top:0">
         <div style="flex:1;min-width:90px">
           <label style="margin:0 0 4px">오늘의 멈춤</label>
@@ -1735,6 +1783,40 @@ function renderSystemTab(){
         <div style="flex:1;min-width:90px">
           <label style="margin:0 0 4px">기록보기</label>
           <input id="iconRecords" value="${(p.nav_icons&&p.nav_icons.records)||'📖'}" maxlength="4">
+        </div>
+      </div>
+      <div class="row">
+        <div style="flex:1;min-width:90px">
+          <label style="margin:0 0 4px">개인 프로필</label>
+          <input id="iconProfile" value="${(p.nav_icons&&p.nav_icons.profile)||''}" maxlength="4" placeholder="없음">
+        </div>
+        <div style="flex:1;min-width:90px">
+          <label style="margin:0 0 4px">소중한 존재</label>
+          <input id="iconPeople" value="${(p.nav_icons&&p.nav_icons.people)||''}" maxlength="4" placeholder="없음">
+        </div>
+        <div style="flex:1;min-width:90px">
+          <label style="margin:0 0 4px">글모음 관리</label>
+          <input id="iconFolders" value="${(p.nav_icons&&p.nav_icons.folders)||''}" maxlength="4" placeholder="없음">
+        </div>
+      </div>
+      <div class="row">
+        <div style="flex:1;min-width:90px">
+          <label style="margin:0 0 4px">명언 관리</label>
+          <input id="iconQuotes" value="${(p.nav_icons&&p.nav_icons.quotes)||''}" maxlength="4" placeholder="없음">
+        </div>
+        <div style="flex:1;min-width:90px">
+          <label style="margin:0 0 4px">책 만들기</label>
+          <input id="iconBook" value="${(p.nav_icons&&p.nav_icons.book)||''}" maxlength="4" placeholder="없음">
+        </div>
+        <div style="flex:1;min-width:90px">
+          <label style="margin:0 0 4px">시스템설정</label>
+          <input id="iconSystem" value="${(p.nav_icons&&p.nav_icons.system)||''}" maxlength="4" placeholder="없음">
+        </div>
+      </div>
+      <div class="row">
+        <div style="flex:1;min-width:90px">
+          <label style="margin:0 0 4px">시스템정보</label>
+          <input id="iconInfo" value="${(p.nav_icons&&p.nav_icons.info)||''}" maxlength="4" placeholder="없음">
         </div>
       </div>
       <button class="btn small" id="saveIcons" style="margin-top:12px">아이콘 저장</button>
@@ -1792,6 +1874,13 @@ function renderSystemTab(){
       moment: document.getElementById("iconMoment").value.trim() || "🌿",
       write: document.getElementById("iconWrite").value.trim() || "✍️",
       records: document.getElementById("iconRecords").value.trim() || "📖",
+      profile: document.getElementById("iconProfile").value.trim() || "",
+      people: document.getElementById("iconPeople").value.trim() || "",
+      folders: document.getElementById("iconFolders").value.trim() || "",
+      quotes: document.getElementById("iconQuotes").value.trim() || "",
+      book: document.getElementById("iconBook").value.trim() || "",
+      system: document.getElementById("iconSystem").value.trim() || "",
+      info: document.getElementById("iconInfo").value.trim() || "",
     };
     const { error } = await sb.from("profiles").update({ nav_icons }).eq("id", state.user.id);
     if (error) return toast("적용 실패: " + error.message);
@@ -1878,6 +1967,7 @@ function parseQuoteCsv(text){
 }
 
 let openQuoteId = null;
+let openQuoteMenu = null;
 
 async function renderQuotesTab(){
   await loadQuotes();
@@ -1933,8 +2023,11 @@ async function renderQuotesTab(){
     renderQuotesTab();
   };
 
+  document.querySelectorAll("[data-quotemenu]").forEach(btn=>{
+    btn.onclick = () => { openQuoteMenu = (openQuoteMenu === btn.dataset.quotemenu) ? null : btn.dataset.quotemenu; renderQuotesTab(); };
+  });
   document.querySelectorAll("[data-editquote]").forEach(btn=>{
-    btn.onclick = () => { openQuoteId = (openQuoteId === btn.dataset.editquote) ? null : btn.dataset.editquote; renderQuotesTab(); };
+    btn.onclick = () => { openQuoteId = (openQuoteId === btn.dataset.editquote) ? null : btn.dataset.editquote; openQuoteMenu = null; renderQuotesTab(); };
   });
   document.querySelectorAll("[data-savequote]").forEach(btn=>{
     btn.onclick = async () => {
@@ -1953,6 +2046,7 @@ async function renderQuotesTab(){
       if (!confirm("이 명언을 삭제하시겠습니까?")) return;
       const { error } = await sb.from("quotes").delete().eq("id", btn.dataset.delquote);
       if (error) return toast("삭제 실패: " + error.message);
+      openQuoteMenu = null;
       renderQuotesTab();
     };
   });
@@ -1969,7 +2063,7 @@ function renderQuoteItem(q){
         <div class="row">
           <button class="btn small" data-savequote="${q.id}">저장</button>
           <button class="btn ghost small" data-editquote="${q.id}">취소</button>
-          <button class="actionlink danger" data-delquote="${q.id}">[삭제]</button>
+          <button class="actionlink danger" data-delquote="${q.id}">삭제</button>
         </div>
       </div>
     `;
@@ -1981,9 +2075,14 @@ function renderQuoteItem(q){
           <div>${q.text}</div>
           <div class="muted" style="margin-top:2px">— ${q.author || "작자 미상"}</div>
         </div>
-        <div style="white-space:nowrap">
-          <button class="actionlink" data-editquote="${q.id}">[변경]</button>
-          <button class="actionlink danger" data-delquote="${q.id}">[삭제]</button>
+        <div style="white-space:nowrap;position:relative">
+          <button class="iconbtn" data-quotemenu="${q.id}">⋮</button>
+          ${openQuoteMenu === q.id ? `
+            <div style="position:absolute;right:0;top:28px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px;box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:5">
+              <button class="actionlink" data-editquote="${q.id}" style="display:block;width:100%;text-align:left">변경</button>
+              <button class="actionlink danger" data-delquote="${q.id}" style="display:block;width:100%;text-align:left">삭제</button>
+            </div>
+          ` : ""}
         </div>
       </div>
     </div>
